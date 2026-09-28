@@ -30,14 +30,17 @@ struct LogView: View {
                             .padding(.top, 20)
                     } else {
                         ForEach(workouts, id: \.uuid) { w in
-                            workoutCard(w)
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        workoutToDelete = w
-                                    } label: {
-                                        Label("删除记录", systemImage: "trash")
-                                    }
+                            NavigationLink(value: w) {
+                                workoutCard(w)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    workoutToDelete = w
+                                } label: {
+                                    Label("删除记录", systemImage: "trash")
                                 }
+                            }
                         }
                     }
 
@@ -50,6 +53,9 @@ struct LogView: View {
                 .padding(.vertical, 10)
             }
             .navigationTitle("记录")
+            .navigationDestination(for: HKWorkout.self) { w in
+                RideDetailView(workout: w)
+            }
             .confirmationDialog("删除这条骑行记录？",
                                 isPresented: Binding(get: { workoutToDelete != nil },
                                                      set: { if !$0 { workoutToDelete = nil } }),

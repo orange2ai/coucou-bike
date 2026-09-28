@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		037367169C105E0BF0971B14 /* BikeCuesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF2061CD9339D98324E3186C /* BikeCuesApp.swift */; };
 		114EF45229BF63C2A2BC0083 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ECEDF899B01969B03CAEFC4 /* SmokeTests.swift */; };
+		120ADDF5B87F2008A481DD80 /* RideDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE7559555BE224F8DF3D714 /* RideDetailView.swift */; };
 		125FD39862DEF751D966DD66 /* ConfettiSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 68A76BAE95C309BB1912D378 /* ConfettiSwiftUI */; };
 		2B2605F6F8F292F3FBF851FF /* coucouWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 82B2F877F2D02A46F3E4A1F7 /* coucouWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		333E96E2058C431957AC7EF0 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55BF04FE7B796252E181912 /* RideView.swift */; };
@@ -79,6 +80,7 @@
 		89890B9A6069886C033F4A06 /* CueSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CueSpeaker.swift; sourceTree = "<group>"; };
 		AB5069D2577504D4564CC9BD /* coucouTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = coucouTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CBB9FCD46D233C862416F005 /* PedometerSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedometerSource.swift; sourceTree = "<group>"; };
+		CCE7559555BE224F8DF3D714 /* RideDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideDetailView.swift; sourceTree = "<group>"; };
 		D6BBC6B08D2E434DA31F8C4C /* RideActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideActivityAttributes.swift; sourceTree = "<group>"; };
 		DAAFC4FC5E6679385242DB18 /* RideModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideModels.swift; sourceTree = "<group>"; };
 		DF2061CD9339D98324E3186C /* BikeCuesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BikeCuesApp.swift; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 			children = (
 				21507F2C07B5CEF0CBA19136 /* CuesView.swift */,
 				63B77F42801441409805BBB4 /* LogView.swift */,
+				CCE7559555BE224F8DF3D714 /* RideDetailView.swift */,
 				41D76E9C15C82F59F5C4E7D3 /* RideSummaryView.swift */,
 				E55BF04FE7B796252E181912 /* RideView.swift */,
 				341165BD9284251666AE22C8 /* RootTabView.swift */,
@@ -340,6 +343,7 @@
 				BC71C88E8578E18E194CC00F /* PedometerSource.swift in Sources */,
 				9E9EDE1128C2C5FD0BBFC5E8 /* PraisePool.swift in Sources */,
 				4469EFCAE402BB540A5AB083 /* RideActivityAttributes.swift in Sources */,
+				120ADDF5B87F2008A481DD80 /* RideDetailView.swift in Sources */,
 				EBD9B1B5DAEB92550AFCB6D6 /* RideEngine.swift in Sources */,
 				4F58AB5A6BE9EC23C6C6EC50 /* RideLiveActivity.swift in Sources */,
 				7FA2DB8834C50F7018B2BC46 /* RideModels.swift in Sources */,
