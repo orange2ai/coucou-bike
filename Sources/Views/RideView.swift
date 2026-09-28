@@ -149,8 +149,8 @@ struct RideView: View {
 
             // 速度
             VStack(spacing: 4) {
-                Text("\(Int(engine.state.speedKmh))")
-                    .font(.system(size: 116, weight: .ultraLight))
+                Text(String(format: "%.1f", engine.state.speedKmh))
+                    .font(.system(size: 96, weight: .ultraLight))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 Text("KM/H")
