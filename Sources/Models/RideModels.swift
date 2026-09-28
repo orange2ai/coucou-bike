@@ -7,6 +7,7 @@ struct RideState {
     var elapsed: TimeInterval = 0     // 骑行用时（不含暂停）
     var heartRate: Double? = nil      // 实时心率
     var heartRateSource: HeartRateSource = .none
+    var heartRateStale: Bool = false  // 心率样本过期（手表体能训练暂停等），保留末次值但置灰
     var averageSpeedKmh: Double = 0
     var maxSpeedKmh: Double = 0
     var calories: Double = 0

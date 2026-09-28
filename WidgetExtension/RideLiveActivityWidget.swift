@@ -34,7 +34,7 @@ struct RideLiveActivityWidget: Widget {
                         if let hr = context.state.heartRate {
                             Label("\(Int(hr))", systemImage: "heart.fill")
                                 .font(.title3).fontWeight(.semibold)
-                                .foregroundStyle(.red)
+                                .foregroundStyle(context.state.heartRateStale ? Color.gray : Color.red)
                                 .monospacedDigit()
                         } else {
                             Text("--").font(.title3).foregroundStyle(.secondary)
@@ -51,6 +51,7 @@ struct RideLiveActivityWidget: Widget {
                         }
                     }
                     .font(.footnote).monospacedDigit()
+                    .padding(.horizontal, 8)
                 }
             } compactLeading: {
                 Image(systemName: "figure.outdoor.cycle")
@@ -75,6 +76,7 @@ struct RideLiveActivityWidget: Widget {
 }
 
 /// 锁屏卡片：紧凑三列，系统给锁屏实时活动的高度有限，铺太满会被压缩错乱
+/// 内容两侧主动留边：全屏黑色背景下系统默认内边距很小，贴边会被屏幕圆角裁切
 struct LockScreenRideView: View {
     let state: RideActivityAttributes.ContentState
 
@@ -88,7 +90,7 @@ struct LockScreenRideView: View {
                 Spacer()
                 if let hr = state.heartRate {
                     Label("\(Int(hr))", systemImage: "heart.fill")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(state.heartRateStale ? Color.gray : Color.red)
                 }
             }
             .font(.footnote).fontWeight(.semibold)
@@ -102,6 +104,8 @@ struct LockScreenRideView: View {
                 metric(RideLiveActivityWidget.timeString(state.elapsed), unit: "用时", color: .white)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 
     private func metric(_ value: String, unit: String, color: Color) -> some View {

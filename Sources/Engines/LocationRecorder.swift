@@ -11,7 +11,7 @@ final class LocationRecorder: NSObject, CLLocationManagerDelegate {
 
     /// 恒速模型卡尔曼：状态 [位置, 速度]，测量噪声取 GPS 精度平方
     private struct Kalman {
-        var q: Double = 0.08          // 过程噪声：加速度标准差 m/s²（骑行到不了这个量级）
+        var q: Double = 0.25          // 过程噪声：加速度标准差 m/s²（0.08 时城市起停加速段跟不上，最高速被低估到 ~20km/h）
         var pos: Double?              // 位置（米）
         var v: Double = 0             // 速度（米/秒）
         var pxx = 0.0, pxv = 0.0, pvv = 0.0

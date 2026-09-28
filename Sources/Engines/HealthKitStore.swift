@@ -53,6 +53,7 @@ final class HealthKitStore {
             HKQuantityType(.heartRate),
             HKQuantityType(.distanceCycling),
             HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.bodyMass),
             HKObjectType.workoutType(),
             HKSeriesType.workoutRoute(),
         ]
@@ -118,6 +119,20 @@ final class HealthKitStore {
     func addRouteLocations(_ locations: [CLLocation]) {
         guard let routeBuilder, isAvailable, !locations.isEmpty else { return }
         routeBuilder.insertRouteData(locations) { _, _ in }
+    }
+
+    /// 最近一次体重记录（千卡 MET 计算用），无记录返回 nil
+    func latestBodyMass() async -> Double? {
+        guard isAvailable else { return nil }
+        let type = HKQuantityType(.bodyMass)
+        return await withCheckedContinuation { cont in
+            let q = HKSampleQuery(sampleType: type, predicate: nil, limit: 1,
+                                  sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]) { _, samples, _ in
+                let kg = (samples as? [HKQuantitySample])?.first?.quantity.doubleValue(for: .gramUnit(with: .kilo))
+                cont.resume(returning: kg)
+            }
+            store.execute(q)
+        }
     }
 
     /// 某次体能训练期间的平均心率

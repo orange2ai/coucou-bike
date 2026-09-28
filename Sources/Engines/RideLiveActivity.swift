@@ -55,6 +55,7 @@ final class RideLiveActivity {
             distanceKm: s.distanceKm,
             elapsed: s.elapsed,
             heartRate: s.heartRate,
+            heartRateStale: s.heartRateStale,
             paused: paused
         )
     }

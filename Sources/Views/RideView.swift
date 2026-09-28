@@ -4,6 +4,8 @@ struct RideView: View {
     @EnvironmentObject var engine: RideEngine
     @State private var showHRHint = false
     @State private var countdown: Int? = nil   // 3、2、1、0(=GO)、nil=关
+    @State private var promoDemoStarted = false
+    @State private var showPromoTap = false
 
 
     var body: some View {
@@ -23,6 +25,22 @@ struct RideView: View {
                     .transition(.opacity)
             }
         }
+        .onAppear { startPromoDemoIfRequested() }
+    }
+
+    private func startPromoDemoIfRequested() {
+#if targetEnvironment(simulator)
+        guard !promoDemoStarted,
+              ProcessInfo.processInfo.arguments.contains("-promoDemo") else { return }
+        promoDemoStarted = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            withAnimation(.easeOut(duration: 0.12)) { showPromoTap = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                withAnimation(.easeOut(duration: 0.12)) { showPromoTap = false }
+                beginCountdown()
+            }
+        }
+#endif
     }
 
     // MARK: - GO 倒数（仿体能训练）：3、2、1、GO 后才真正开骑
@@ -78,12 +96,23 @@ struct RideView: View {
             Spacer()
 
             Button(action: { beginCountdown() }) {
-                Text("GO")
-                    .font(.system(size: 46, weight: .heavy))
-                    .foregroundStyle(.black)
-                    .frame(width: 172, height: 172)
-                    .background(Circle().fill(Color.orange))
-                    .shadow(color: .orange.opacity(0.25), radius: 30)
+                ZStack {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 172, height: 172)
+                        .shadow(color: .orange.opacity(0.25), radius: 30)
+                    Text("GO")
+                        .font(.system(size: 46, weight: .heavy))
+                        .foregroundStyle(.black)
+                    if showPromoTap {
+                        Image(systemName: "hand.tap.fill")
+                            .font(.system(size: 34, weight: .medium))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                            .offset(x: 42, y: 38)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
 
@@ -93,8 +122,8 @@ struct RideView: View {
                     Text("\(Int(hr))")
                         .font(.system(size: 40, weight: .light))
                         .monospacedDigit()
-                        .foregroundStyle(.orange)
-                    Text("BPM · 实时心率")
+                        .foregroundStyle(engine.state.heartRateStale ? Color(white: 0.45) : .orange)
+                    Text(engine.state.heartRateStale ? "BPM · 心率已延迟" : "BPM · 实时心率")
                         .font(.caption2)
                         .tracking(2)
                         .foregroundStyle(Color(white: 0.45))
@@ -134,7 +163,9 @@ struct RideView: View {
             HStack(spacing: 0) {
                 bigMetric(value: String(format: "%.2f", engine.state.distanceKm), unit: "距离 KM")
                 Rectangle().fill(Color(white: 0.14)).frame(width: 1, height: 64)
-                bigMetric(value: engine.state.heartRate.map { "\(Int($0))" } ?? "—", unit: "心率 BPM")
+                bigMetric(value: engine.state.heartRate.map { "\(Int($0))" } ?? "—",
+                          unit: engine.state.heartRateStale ? "心率 · 已延迟" : "心率 BPM",
+                          color: engine.state.heartRateStale ? Color(white: 0.45) : .white)
                     .onTapGesture { showHRHint = true }
             }
             .padding(.top, 20)
@@ -182,11 +213,12 @@ struct RideView: View {
         .contentShape(Rectangle())
     }
 
-    private func bigMetric(value: String, unit: String) -> some View {
+    private func bigMetric(value: String, unit: String, color: Color = .white) -> some View {
         VStack(spacing: 6) {
             Text(value)
                 .font(.system(size: 52, weight: .light))
                 .monospacedDigit()
+                .foregroundStyle(color)
             Text(unit)
                 .font(.caption2)
                 .tracking(3)
