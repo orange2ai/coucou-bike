@@ -23,9 +23,10 @@ struct RideLiveActivityWidget: Widget {
                         Text("距离")
                             .font(.caption2).foregroundStyle(.secondary)
                         Text("\(context.state.distanceKm, specifier: "%.2f") km")
-                            .font(.title3).fontWeight(.semibold)
+                            .font(.headline).fontWeight(.semibold)
                             .monospacedDigit()
                     }
+                    .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -33,17 +34,18 @@ struct RideLiveActivityWidget: Widget {
                             .font(.caption2).foregroundStyle(.secondary)
                         if let hr = context.state.heartRate {
                             Label("\(Int(hr))", systemImage: "heart.fill")
-                                .font(.title3).fontWeight(.semibold)
+                                .font(.headline).fontWeight(.semibold)
                                 .foregroundStyle(context.state.heartRateStale ? Color.gray : Color.red)
                                 .monospacedDigit()
                         } else {
-                            Text("--").font(.title3).foregroundStyle(.secondary)
+                            Text("--").font(.headline).foregroundStyle(.secondary)
                         }
                     }
+                    .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Label("\(Int(context.state.speedKmh)) km/h", systemImage: "speedometer")
+                        Label("\(String(format: "%.1f", context.state.speedKmh)) km/h", systemImage: "speedometer")
                         Spacer()
                         Text(Self.timeString(context.state.elapsed))
                         if context.state.paused {
@@ -51,7 +53,9 @@ struct RideLiveActivityWidget: Widget {
                         }
                     }
                     .font(.footnote).monospacedDigit()
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
                 }
             } compactLeading: {
                 Image(systemName: "figure.outdoor.cycle")
