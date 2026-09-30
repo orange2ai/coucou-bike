@@ -22,7 +22,7 @@ struct RideLiveActivityWidget: Widget {
                     HStack(spacing: 0) {
                         islandMetric(String(format: "%.1f", context.state.speedKmh), "KM/H", color: .orange)
                         Spacer()
-                        islandMetric("\(context.state.distanceKm, specifier: "%.2f")", "公里")
+                        islandMetric(String(format: "%.2f", context.state.distanceKm), "公里")
                         Spacer()
                         islandMetric(Self.timeString(context.state.elapsed), "用时")
                     }
