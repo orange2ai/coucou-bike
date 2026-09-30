@@ -18,40 +18,23 @@ struct RideLiveActivityWidget: Widget {
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("距离")
-                            .font(.caption2).foregroundStyle(.secondary)
-                        Text("\(context.state.distanceKm, specifier: "%.2f") km")
-                            .font(.headline).fontWeight(.semibold)
-                            .monospacedDigit()
-                    }
-                    .padding(.leading, 14)
-                    .padding(.top, 6)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("用时")
-                            .font(.caption2).foregroundStyle(.secondary)
-                        Text(Self.timeString(context.state.elapsed))
-                            .font(.headline).fontWeight(.semibold)
-                            .monospacedDigit()
-                    }
-                    .padding(.trailing, 14)
-                    .padding(.top, 6)
-                }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        Label("\(String(format: "%.1f", context.state.speedKmh)) km/h", systemImage: "speedometer")
+                    HStack(spacing: 0) {
+                        islandMetric(String(format: "%.1f", context.state.speedKmh), "KM/H", color: .orange)
                         Spacer()
-                        if context.state.paused {
-                            Text("已暂停").foregroundStyle(.orange)
-                        }
+                        islandMetric("\(context.state.distanceKm, specifier: "%.2f")", "公里")
+                        Spacer()
+                        islandMetric(Self.timeString(context.state.elapsed), "用时")
                     }
-                    .font(.footnote).monospacedDigit()
                     .padding(.horizontal, 22)
-                    .padding(.top, 8)
+                    .padding(.top, 10)
                     .padding(.bottom, 14)
+                    if context.state.paused {
+                        Text("已暂停")
+                            .font(.caption2).foregroundStyle(.orange)
+                            .padding(.bottom, 10)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
             } compactLeading: {
                 Image(systemName: "figure.outdoor.cycle")
@@ -72,6 +55,19 @@ struct RideLiveActivityWidget: Widget {
         let s = Int(t)
         if s >= 3600 { return String(format: "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60) }
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+
+    /// 展开区统一的三列数据样式：数值在上、标签在下，与锁屏卡片同款
+    private func islandMetric(_ value: String, _ label: String, color: Color = .white) -> some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
