@@ -12,6 +12,10 @@ struct LogView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    RideStatsView(records: records)
+
+                    Text("历史记录").font(.headline).padding(.top, 6)
+
                     if records.isEmpty {
                         Text("暂无骑行记录。按下 GO 骑一场，回来就能看到。")
                             .font(.footnote)
