@@ -37,9 +37,10 @@
   nav a:hover { color: var(--orange); }
 
   .hero { text-align: center; padding: 72px 0 40px; }
-  .hero h1 { font-size: clamp(34px, 6vw, 56px); font-weight: 800; letter-spacing: 1px; }
-  .hero h1 .accent { color: var(--orange); }
-  .hero p.sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 20px); margin-top: 18px; }
+  .hero h1 { font-size: clamp(40px, 7vw, 64px); font-weight: 800; letter-spacing: 1px; }
+  .hero p.sub { color: var(--text); font-size: clamp(18px, 2.8vw, 24px); margin-top: 16px; font-weight: 600; }
+  .hero p.badge { color: var(--muted); font-size: clamp(15px, 2vw, 18px); margin-top: 10px; }
+  .hero p.badge .accent { color: var(--orange); font-weight: 700; }
   .hero .cta { margin-top: 30px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
   .btn {
     display: inline-block; padding: 12px 26px; border-radius: 24px;
@@ -123,8 +124,9 @@
   </header>
 
   <div class="hero">
-    <h1>骑行时，有一只<span class="accent">鸟</span>在你耳机里报数</h1>
-    <p class="sub">速度、距离、滚动均速，该报的报，顺便夸夸你。<br>数据一眼看清，只读健康，绝不打扰你的播客。</p>
+    <h1>咕咕骑车</h1>
+    <p class="sub">骑行播报，骑行记录</p>
+    <p class="badge"><span class="accent">Apple Watch 的最佳骑行搭档</span></p>
     <div class="cta">
       <a class="btn primary" href="https://github.com/orange2ai/coucou-bike">GitHub 开源</a>
       <a class="btn ghost" href="#stats">看看记录页</a>
@@ -219,7 +221,7 @@
 
 <footer>
   <div class="wrap">
-    <div>咕咕骑车 Coucou Bike · 骑行时，有一只鸟在你耳机里报数</div>
+    <div>咕咕骑车 Coucou Bike · Apple Watch 的最佳骑行搭档</div>
     <div>
       <a href="https://coucoubike.com">coucoubike.com</a> ·
       <a href="https://github.com/orange2ai/coucou-bike">GitHub</a> ·
