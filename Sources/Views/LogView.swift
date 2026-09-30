@@ -184,10 +184,39 @@ struct LogView: View {
 
     private func load() async {
         loading = true
+        Self.seedDemoDataIfNeeded()
         try? await HealthKitStore.shared.requestAuthorization()
         workouts = await HealthKitStore.shared.recentWorkouts()
         localRecords = RideArchive.loadAll()
         loading = false
+    }
+
+    /// 截图/演示用：-demoData 时往本机存档灌一批虚构骑行（只在空存档时生效）
+    private static func seedDemoDataIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-demoData"),
+              RideArchive.loadAll().isEmpty else { return }
+        let demos: [(daysAgo: Int, hour: Int, km: Double, mins: Int, kcal: Int)] = [
+            (0, 8, 18.4, 47, 322), (2, 7, 12.6, 33, 215), (4, 18, 25.3, 66, 458),
+            (6, 9, 31.8, 82, 590), (8, 7, 9.7, 26, 168), (11, 19, 22.5, 58, 402),
+            (14, 8, 16.9, 43, 295), (17, 7, 28.1, 72, 516), (21, 9, 14.2, 37, 247),
+            (26, 8, 35.6, 92, 668), (33, 7, 19.8, 50, 348), (41, 18, 11.3, 29, 194),
+            (48, 8, 24.7, 64, 446), (55, 9, 30.2, 78, 558),
+        ]
+        let cal = Calendar.current
+        for d in demos {
+            guard let start = cal.date(byAdding: .day, value: -d.daysAgo, to: Date()) else { continue }
+            let startFixed = cal.date(bySettingHour: d.hour, minute: Int.random(in: 5...50), second: 0, of: start)!
+            let rec = RideRecord(
+                startDate: startFixed,
+                duration: TimeInterval(d.mins * 60),
+                distanceKm: d.km,
+                avgSpeedKmh: d.km / (Double(d.mins) / 60),
+                maxSpeedKmh: d.km / (Double(d.mins) / 60) + 8,
+                calories: d.kcal,
+                elevationGainM: Double(Int(d.km * 6)),
+                cues: [], route: [])
+            RideArchive.save(rec)
+        }
     }
 
     private func exportHealth(_ w: HKWorkout) {

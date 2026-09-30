@@ -166,14 +166,10 @@ struct RideView: View {
             .padding(.horizontal, 10)
             .padding(.bottom, 4)
 
-            // 滚动均速：一条一条列出来
+            // 滚动均速：一条一条列出来，骑满对应距离才有数值
             VStack(spacing: 6) {
-                if let v = engine.state.recent1kmKmh {
-                    rollingRow("最近 1 公里", v)
-                }
-                if let v = engine.state.recent5kmKmh {
-                    rollingRow("最近 5 公里", v)
-                }
+                rollingRow("最近 1 公里", engine.state.recent1kmKmh)
+                rollingRow("最近 5 公里", engine.state.recent5kmKmh)
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 6)
@@ -201,16 +197,16 @@ struct RideView: View {
 
     private var stateElevationGain: Double { engine.state.elevationGainM }
 
-    private func rollingRow(_ label: String, _ kmh: Double) -> some View {
+    private func rollingRow(_ label: String, _ kmh: Double?) -> some View {
         HStack {
             Text(label)
                 .font(.footnote)
                 .foregroundStyle(.gray)
             Spacer()
-            Text(String(format: "%.1f km/h", kmh))
+            Text(kmh.map { String(format: "%.1f km/h", $0) } ?? "—")
                 .font(.system(.footnote, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white)
+                .foregroundStyle(kmh == nil ? Color(white: 0.45) : .white)
         }
         .contentTransition(.numericText())
     }
