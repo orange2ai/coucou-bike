@@ -3,7 +3,7 @@ import SwiftUI
 import CoreLocation
 import UIKit
 
-/// 骑行总引擎：编排 GPS、HealthKit、播报、省电
+/// 骑行总引擎：编排 GPS、播报、省电。数据只落本机，不碰健康
 @MainActor
 final class RideEngine: ObservableObject {
     static let shared = RideEngine()
@@ -13,8 +13,6 @@ final class RideEngine: ObservableObject {
     @Published var state = RideState()
     @Published var cues: [CueEvent] = []
     @Published var settings: CueSettings = CueSettings.load()
-    @Published var healthAuthorized = false
-    @Published var hrAuthDenied = false
     @Published var locationStatus: CLAuthorizationStatus = .notDetermined
     @Published var locationFixCount = 0
 
@@ -25,24 +23,16 @@ final class RideEngine: ObservableObject {
     private let pedometer = PedometerSource()
     private var lastGpsKmh = 0.0
     private var lastPedTime: Date?
-    private let hk = HealthKitStore.shared
     private var startDate: Date?
     private var pausedAccum: TimeInterval = 0
     private var lastPauseStart: Date?
     private var lastKm = 0
     private var lastKmElapsed: TimeInterval = 0
-    private var lastZone: HRZone?
     private let praise = PraisePicker()
     private var isAutoPaused = false
     private var lowSpeedTicks = 0
     private var ticker: Timer?
-    // 本公里心率累计（用于“平均心率”播报）
-    private var hrSegSum: Double = 0
-    private var hrSegCount: Int = 0
-    private var routeBuffer: [CLLocation] = []
-    // 最后一次收到心率样本的时间：过期回落“未连接”
-    private var lastHRDate: Date?
-    private var hrNudgeShown = false
+    private var routeBuffer: [RideRecord.RidePoint] = []
     private var locNudgeShown = false
     private var lastAccuracy: Double = 0
     private var lastSystemSpeed: Double = 0
@@ -50,16 +40,10 @@ final class RideEngine: ObservableObject {
     private var lastKnownLocation: CLLocation?
     private var pedKmhForLog = 0.0
     private var gpsNudgeShown = false
-    // 全程心率统计（结算页读）
-    private(set) var rideHrSum: Double = 0
-    private(set) var rideHrCount = 0
-    private(set) var rideMaxHr: Double?
+    private var lastElevation: Double?
     /// 结束后的结算页开关
     @Published var showSummary = false
-    private var lastHRPoll: Date?
-    private var hrWatchdog: Timer?
-    // 千卡计算用的体重（默认 70kg，startRide 时从健康取最近体重）
-    private var bodyMassKg: Double = 70
+    private var rideStart = Date()
 #if targetEnvironment(simulator)
     private var promoDemoTick = 0
     private var promoDemoEndScheduled = false
@@ -93,24 +77,6 @@ final class RideEngine: ObservableObject {
         locationStatus = recorder.authorizationStatus
         // 清理上一场骑行的残留实时活动（App 重启后骑行不会恢复）
         Task { @MainActor in RideLiveActivity.shared.clearStale() }
-        // App 启动即挂载心率监听：手表在练，设置页随时能看到"已连接"
-        // （带调试参数启动时跳过，避免模拟器截图被授权弹窗挡住）
-        if !CommandLine.arguments.contains(where: { $0.hasPrefix("-") }) {
-            Task { @MainActor in
-                try? await hk.requestAuthorization()
-            self.healthAuthorized = self.hk.isAvailable
-            self.hrAuthDenied = self.hk.heartRateAuthDenied()
-            self.hrLog("auth done, available=\(self.hk.isAvailable), denied=\(self.hrAuthDenied)")
-            guard self.hk.isAvailable, !self.hrAuthDenied else { return }
-            self.hk.startLiveHeartRateObservation { [weak self] bpm, endDate in
-                Task { @MainActor in
-                    guard let self, Date().timeIntervalSince(endDate) < 60 else { return }
-                    self.absorbHeartRate(bpm, source: .healthKit, at: endDate)
-                }
-            }
-            self.startHRWatchdog()
-            }
-        }
     }
 
     /// 骑行 MET 分级（Compendium of Physical Activities，按当前速度）
@@ -136,7 +102,7 @@ final class RideEngine: ObservableObject {
         }
     }
 
-    /// 骑行链路诊断日志（定位/心率/距离）
+    /// 骑行链路诊断日志（定位/距离）
     private func rideLog(_ line: String) {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss.SSS"
@@ -166,7 +132,6 @@ final class RideEngine: ObservableObject {
             if dt > 0.2, dt < 10 {
                 let meters = kmh / 3.6 * dt
                 state.distanceKm += meters / 1000
-                hk.addDistanceSample(meters: meters, at: now)
             }
         }
         state.speedKmh = kmh
@@ -185,75 +150,17 @@ final class RideEngine: ObservableObject {
         }
     }
 
-    /// 心率链路诊断日志（写入沙盒 Documents，可经 devicectl 拉取）
-    private func hrLog(_ line: String) {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss.SSS"
-        let text = "[\(f.string(from: Date()))] \(line)\n"
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appending(path: "hr_debug.log")
-        if let handle = try? FileHandle(forWritingTo: url) {
-            try? handle.seekToEnd()
-            handle.write(text.data(using: .utf8)!)
-            try? handle.close()
-        } else {
-            try? text.write(to: url, atomically: true, encoding: .utf8)
-        }
-    }
-
-    /// 心率看门狗：15 秒没有新样本先保留末次值并置灰（手表体能训练暂停/同步延迟也常见），
-    /// 120 秒仍无新样本才回落“未连接”。恢复收到新样本后自动回实时。
-    private func startHRWatchdog() {
-        hrWatchdog?.invalidate()
-        hrWatchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if let last = self.lastHRDate {
-                    let age = Date().timeIntervalSince(last)
-                    if age > 120, self.state.heartRateSource != .none {
-                        self.hrLog("watchdog: sample age \(Int(age))s, drop to disconnected")
-                        self.state.heartRate = nil
-                        self.state.heartRateStale = false
-                        self.state.heartRateSource = .none
-                    } else if age > 15, !self.state.heartRateStale {
-                        self.hrLog("watchdog: sample age \(Int(age))s, mark stale (keep last value)")
-                        self.state.heartRateStale = true
-                    }
-                }
-                // 断连期间每 5 秒主动捞一次：中途开手表也能快速连上；12 秒窗口，过期样本绝不冒充实时
-                if self.state.heartRateSource == .none, !self.hrAuthDenied,
-                   self.lastHRDate == nil || Date().timeIntervalSince(self.lastHRDate!) > 15,
-                   self.lastHRPoll == nil || Date().timeIntervalSince(self.lastHRPoll!) > 5 {
-                    self.lastHRPoll = Date()
-                    Task { [weak self] in
-                        if let (date, hr) = await HealthKitStore.shared.latestHeartRate(within: 12) {
-                            self?.hrLog("poll hit: bpm=\(Int(hr)), age=\(Int(Date().timeIntervalSince(date)))s")
-                            guard let self else { return }
-                            self.absorbHeartRate(hr, source: .healthKit, at: date)
-                        } else {
-                            self?.hrLog("poll miss: no sample within 12s")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - 生命周期
 
     func startRide() {
         guard phase == .idle else { return }
         let now = Date()
         startDate = now
+        rideStart = now
         lastKm = 0
-        lastZone = nil
         pausedAccum = 0
-        hrNudgeShown = false
         cues.removeAll()
         state = RideState()
-        rideHrSum = 0
-        rideHrCount = 0
-        rideMaxHr = nil
         showSummary = false
 #if targetEnvironment(simulator)
         promoDemoTick = 0
@@ -272,6 +179,8 @@ final class RideEngine: ObservableObject {
         locNudgeShown = false
         gpsNudgeShown = false
         firstFix = nil
+        lastElevation = nil
+        routeBuffer.removeAll()
         rideLog("startRide: location auth=\(Self.describe(recorder.authorizationStatus))")
         CueSpeaker.shared.activateSession(mixWithOthers: settings.mixWithAudio)
         if !isPromoDemo {
@@ -285,25 +194,6 @@ final class RideEngine: ObservableObject {
             RideLiveActivity.shared.start(state: state)
         }
         startTicker()
-
-        // 宣发演示不请求授权、不写入健康；普通骑行仍先授权再启动 workout。
-        if !isPromoDemo {
-            Task { @MainActor in
-                try? await hk.requestAuthorization()
-                if let kg = await hk.latestBodyMass(), kg > 25, kg < 250 {
-                    bodyMassKg = kg
-                }
-                self.healthAuthorized = hk.isAvailable
-                guard phase != .idle, let s = startDate else { return }
-                hk.startWorkout(start: s)
-                hk.startLiveHeartRateObservation { [weak self] bpm, endDate in
-                    Task { @MainActor in
-                        guard let self, Date().timeIntervalSince(endDate) < 90 else { return }
-                        self.absorbHeartRate(bpm, source: .healthKit)
-                    }
-                }
-            }
-        }
     }
 
     func pause() {
@@ -359,10 +249,9 @@ final class RideEngine: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = false
         phase = .idle
 
-        // 一分钟以内的骑行视为测试，不写入健康，也不弹结算页
+        // 一分钟以内的骑行视为测试，不存档，也不弹结算页
         if state.elapsed < 60 {
             RideLiveActivity.shared.end(state: state)
-            hk.discardWorkout()
             routeBuffer.removeAll()
             cue("骑了不到一分钟，咕咕当你在测试，没有记录", kind: .lifecycle)
             return
@@ -372,36 +261,32 @@ final class RideEngine: ObservableObject {
         RideLiveActivity.shared.end(state: state)
         showSummary = true
 
-        // 宣发模式只展示结算，不碰 HealthKit/轨迹/能量写入。
+        // 宣发模式只展示结算，不存档
         if isPromoDemo {
             routeBuffer.removeAll()
             return
         }
 
-        // 千卡用骑行中按秒积分的结果（MET×体重），不再用固定 9.8 kcal/min 粗估
-        if state.calories > 0.5 {
-            hk.addEnergySample(kcal: state.calories, start: start, end: end)
-        }
-        let buffered = routeBuffer
+        // 存档：一条骑行一个 JSON，数据完全归本机
+        let record = RideRecord(
+            startDate: start,
+            duration: state.elapsed,
+            distanceKm: state.distanceKm,
+            avgSpeedKmh: state.averageSpeedKmh,
+            maxSpeedKmh: state.maxSpeedKmh,
+            calories: Int(state.calories),
+            elevationGainM: state.elevationGainM,
+            cues: Array(cues.reversed()),
+            route: routeBuffer
+        )
         routeBuffer.removeAll()
-        Task { @MainActor in
-            self.hk.addRouteLocations(buffered)
-            self.hk.endWorkout(end: end) { [weak self] ok in
-                Task { @MainActor in
-                    guard let self else { return }
-                    if ok {
-                        var text = "骑行结束，数据已写入苹果健康"
-                        if self.settings.emotionalValue {
-                            text += "。" + PraisePool.finish(distanceKm: self.state.distanceKm)
-                        }
-                        self.cue(text, kind: .lifecycle)
-                    } else {
-                        self.cue("骑行结束，但健康写入未完成，请检查健康授权", kind: .lifecycle)
-                    }
-                }
-            }
+        RideArchive.save(record)
+
+        var text = "骑行结束，记录已存好"
+        if settings.emotionalValue {
+            text += "。" + PraisePool.finish(distanceKm: state.distanceKm)
         }
-        // 保留 cues 供结束页展示；新骑行时清空
+        cue(text, kind: .lifecycle)
     }
 
     // MARK: - 定时器
@@ -430,7 +315,7 @@ final class RideEngine: ObservableObject {
         state.elapsed = Date().timeIntervalSince(start) - pausedAccum
         state.averageSpeedKmh = state.elapsed > 5 ? state.distanceKm / (state.elapsed / 3600) : 0
         // 千卡：MET 分级 × 体重，按秒积分（暂停/自动暂停不计时，与骑行用时一致）
-        state.calories += Self.met(forKmh: state.speedKmh) * 3.5 * bodyMassKg / 200 / 60
+        state.calories += Self.met(forKmh: state.speedKmh) * 3.5 * settings.bodyMassKg / 200 / 60
         RideLiveActivity.shared.update(state: state, paused: false)
 
         // 低速自动暂停：连续 3 秒低于 1 km/h
@@ -453,8 +338,6 @@ final class RideEngine: ObservableObject {
             let t = Date().timeIntervalSince(s)
             state.speedKmh = max(4, 23 + sin(t / 7) * 6 + sin(t / 2.3) * 2.5)
             state.distanceKm += state.speedKmh / 3600 * 60
-            let hr = min(172, max(98, (state.heartRate ?? 118) + Double.random(in: -2...2.4)))
-            absorbHeartRate(hr, source: .healthKit)
         }
         #endif
 
@@ -476,7 +359,7 @@ final class RideEngine: ObservableObject {
                 guard let last = lastKnownLocation else { return 0 }
                 return first.distance(from: last)
             }) ?? 0
-            rideLog("t=\(Int(state.elapsed))s fixes=\(locationFixCount) dist=\(String(format: "%.2f", state.distanceKm))km speed=\(String(format: "%.1f", state.speedKmh)) acc=\(Int(lastAccuracy))m sysSpeed=\(String(format: "%.1f", lastSystemSpeed)) moved=\(Int(moved))m ped=\(String(format: "%.1f", pedKmhForLog)) hr=\(state.heartRateSource == .none ? "无" : "\(Int(state.heartRate ?? 0))")")
+            rideLog("t=\(Int(state.elapsed))s fixes=\(locationFixCount) dist=\(String(format: "%.2f", state.distanceKm))km speed=\(String(format: "%.1f", state.speedKmh)) acc=\(Int(lastAccuracy))m sysSpeed=\(String(format: "%.1f", lastSystemSpeed)) moved=\(Int(moved))m ped=\(String(format: "%.1f", pedKmhForLog))")
         }
 
         // 60 秒了位置几乎没挪：不是没权限，是 GPS 被挡了（室内 Wi-Fi 定位感知不到米级移动）
@@ -489,25 +372,6 @@ final class RideEngine: ObservableObject {
             gpsNudgeShown = true
             rideLog("gps weak: moved<20m after 60s, likely indoors")
             cue("GPS 信号很弱，咕咕可能被墙挡住了。到空旷处或窗边试试", kind: .lifecycle)
-        }
-
-        // 骑行 30 秒仍无心率：主动说一次，别让用户对着“—”发呆
-        if !hrNudgeShown, state.elapsed > 30, state.heartRateSource == .none {
-            hrNudgeShown = true
-            if hrAuthDenied {
-                cue("健康读取权限没开，心率进不来。去系统设置，隐私与安全，健康里打开咕咕骑车", kind: .lifecycle)
-            } else {
-                cue("咕咕还没听到心率，确认手表体能训练已经在跑", kind: .lifecycle)
-            }
-        }
-
-        // 心率兜底源：定时从 HealthKit 捞最新心率（仅在实时观察未生效时使用）
-        if state.heartRateSource == .none {
-            Task { [weak self] in
-                guard let (date, hr) = await HealthKitStore.shared.latestHeartRate(within: 12) else { return }
-                guard let self else { return }
-                self.absorbHeartRate(hr, source: .healthKit, at: date)
-            }
         }
 
         checkTriggers()
@@ -524,7 +388,6 @@ final class RideEngine: ObservableObject {
         state.maxSpeedKmh = max(state.maxSpeedKmh, state.speedKmh)
         state.averageSpeedKmh = 20
         state.calories = 9.8 * state.elapsed / 60
-        absorbHeartRate(145 + sin(Double(ticks) * 0.5) * 3, source: .healthKit)
 
         if ticks == 4 {
             cue("已经骑行 5 公里，最近一公里平均速度 20 公里", kind: .kmSplit)
@@ -550,6 +413,13 @@ final class RideEngine: ObservableObject {
         if locationFixCount == 1 {
             rideLog("first fix: \(String(format: "%.5f,%.5f", location.coordinate.latitude, location.coordinate.longitude)) acc=\(Int(location.horizontalAccuracy))m sysSpeed=\(String(format: "%.2f", location.speed)) sysAcc=\(String(format: "%.2f", location.speedAccuracy))")
         }
+        // 累计爬升：海拔上升才计
+        if location.verticalAccuracy > 0 {
+            if let lastEle = lastElevation, location.altitude - lastEle > 0, location.altitude - lastEle < 50 {
+                state.elevationGainM += location.altitude - lastEle
+            }
+            lastElevation = location.altitude
+        }
         // 自动暂停状态下继续监听位置，速度起来就自动继续
         if phase == .paused {
             if isAutoPaused, speedKmh > 3 {
@@ -562,37 +432,22 @@ final class RideEngine: ObservableObject {
         if speedKmh > state.maxSpeedKmh { state.maxSpeedKmh = speedKmh }
         if meters > 0 {
             state.distanceKm += meters / 1000
-            hk.addDistanceSample(meters: meters, at: location.timestamp)
         }
         state.elevationM = location.altitude
         if location.horizontalAccuracy < 30 {
-            routeBuffer.append(location)
-            if routeBuffer.count >= 10 {
-                hk.addRouteLocations(routeBuffer)
-                routeBuffer.removeAll()
-            }
+            let p = RideRecord.RidePoint(
+                t: location.timestamp.timeIntervalSince(rideStart),
+                lat: location.coordinate.latitude,
+                lon: location.coordinate.longitude,
+                ele: location.altitude
+            )
+            routeBuffer.append(p)
         }
-    }
-
-
-    func absorbHeartRate(_ bpm: Double, source: HeartRateSource, at date: Date = Date()) {
-        lastHRDate = date
-        state.heartRate = bpm
-        state.heartRateSource = source
-        state.heartRateStale = Date().timeIntervalSince(date) > 15
-        guard phase == .riding else { return }
-        hrSegSum += bpm
-        hrSegCount += 1
-        rideHrSum += bpm
-        rideHrCount += 1
-        rideMaxHr = max(rideMaxHr ?? 0, bpm)
     }
 
     // MARK: - 触发器
 
     private func checkTriggers() {
-        let avg = state.averageSpeedKmh
-
         // 每公里
         if settings.perKilometer {
             let km = Int(state.distanceKm)
@@ -601,11 +456,7 @@ final class RideEngine: ObservableObject {
                 let split = state.elapsed - lastKmElapsed
                 lastKmElapsed = state.elapsed
                 let splitSpeed = split > 1 ? 3600 / split : state.speedKmh
-                let avgHR = hrSegCount > 0 ? hrSegSum / Double(hrSegCount) : state.heartRate
-                let hrText = avgHR.map { "，平均心率 \(Int($0))" } ?? ""
-                hrSegSum = 0
-                hrSegCount = 0
-                var text = "已经骑行 \(km) 公里，最近一公里平均速度 \(Int(splitSpeed)) 公里\(hrText)"
+                var text = "已经骑行 \(km) 公里，最近一公里平均速度 \(Int(splitSpeed)) 公里"
                 // 情绪价值：报完正事，三成概率补一句歪嘴夸夸
                 if settings.emotionalValue, Double.random(in: 0..<1) < 0.35,
                    let line = praise.pick(from: PraisePool.perKilometer) {
@@ -613,20 +464,6 @@ final class RideEngine: ObservableObject {
                 }
                 cue(text, kind: .kmSplit)
             }
-        }
-
-        // 心率区间
-        if settings.hrZoneAlert, let hr = state.heartRate {
-            let z = HRZone(heartRate: hr)
-            if let last = lastZone, z != last {
-                var text = "心率进入\(z.name)，当前 \(Int(hr))"
-                if settings.emotionalValue, z.rawValue > last.rawValue,
-                   let line = praise.pick(from: PraisePool.highHeartRate) {
-                    text += " " + line
-                }
-                cue(text, kind: .hrZone)
-            }
-            lastZone = z
         }
     }
 
@@ -643,30 +480,5 @@ final class RideEngine: ObservableObject {
 
     func saveSettings() {
         settings.save()
-    }
-
-    func exportLatestRideMarkdown() -> String {
-        let date = startDate ?? Date()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        let distStr = String(format: "%.2f", state.distanceKm)
-        let avgStr = String(format: "%.1f", state.averageSpeedKmh)
-        let hrStr = state.heartRate.map { " · 最新 \(Int($0)) bpm" } ?? ""
-        var lines = [
-            "# 骑行 · \(formatter.string(from: date))",
-            "",
-            "- 距离: \(distStr) km",
-            "- 用时: \(Int(state.elapsed / 60)) 分钟",
-            "- 平均速度: \(avgStr) km/h",
-            "- 心率源: \(state.heartRateSource.rawValue)\(hrStr)",
-            "- 播报记录: \(cues.count) 条",
-            "",
-            "> 由 咕咕骑车 Coucou Bike 导出 · 供人阅读，也供 agent 分析",
-        ]
-        for c in cues.reversed() {
-            let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
-            lines.append("- [\(f.string(from: c.date))] \(c.text)")
-        }
-        return lines.joined(separator: "\n")
     }
 }

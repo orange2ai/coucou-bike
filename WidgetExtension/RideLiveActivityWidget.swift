@@ -30,16 +30,11 @@ struct RideLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("心率")
+                        Text("用时")
                             .font(.caption2).foregroundStyle(.secondary)
-                        if let hr = context.state.heartRate {
-                            Label("\(Int(hr))", systemImage: "heart.fill")
-                                .font(.headline).fontWeight(.semibold)
-                                .foregroundStyle(context.state.heartRateStale ? Color.gray : Color.red)
-                                .monospacedDigit()
-                        } else {
-                            Text("--").font(.headline).foregroundStyle(.secondary)
-                        }
+                        Text(Self.timeString(context.state.elapsed))
+                            .font(.headline).fontWeight(.semibold)
+                            .monospacedDigit()
                     }
                     .padding(.trailing, 4)
                 }
@@ -47,7 +42,6 @@ struct RideLiveActivityWidget: Widget {
                     HStack {
                         Label("\(String(format: "%.1f", context.state.speedKmh)) km/h", systemImage: "speedometer")
                         Spacer()
-                        Text(Self.timeString(context.state.elapsed))
                         if context.state.paused {
                             Text("已暂停").foregroundStyle(.orange)
                         }
@@ -61,11 +55,11 @@ struct RideLiveActivityWidget: Widget {
                 Image(systemName: "figure.outdoor.cycle")
                     .foregroundStyle(.orange)
             } compactTrailing: {
-                Text("\(Int(context.state.speedKmh))")
+                Text("\(String(format: "%.1f", context.state.speedKmh))")
                     .font(.callout).fontWeight(.semibold)
                     .monospacedDigit().foregroundStyle(.orange)
             } minimal: {
-                Text("\(Int(context.state.speedKmh))")
+                Text("\(String(format: "%.1f", context.state.speedKmh))")
                     .font(.caption).fontWeight(.semibold)
                     .monospacedDigit().foregroundStyle(.orange)
             }
@@ -92,10 +86,8 @@ struct LockScreenRideView: View {
                 Text(state.paused ? "已暂停" : "骑行中")
                     .foregroundStyle(state.paused ? Color.yellow : Color.white)
                 Spacer()
-                if let hr = state.heartRate {
-                    Label("\(Int(hr))", systemImage: "heart.fill")
-                        .foregroundStyle(state.heartRateStale ? Color.gray : Color.red)
-                }
+                Image(systemName: "megaphone.fill")
+                    .foregroundStyle(Color(white: 0.45))
             }
             .font(.footnote).fontWeight(.semibold)
             .monospacedDigit()

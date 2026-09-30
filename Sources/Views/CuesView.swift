@@ -8,7 +8,6 @@ struct CuesView: View {
             List {
                 Section("触发") {
                     toggleRow("每公里播报", sub: "距离、用时、当前速度、平均速度", $engine.settings.perKilometer)
-                    toggleRow("心率区间提醒", sub: "进出区间时播报当前心率", $engine.settings.hrZoneAlert)
                     toggleRow("情绪价值", sub: "报数之外，顺便夸夸你", $engine.settings.emotionalValue)
                 }
                 Section("音频") {

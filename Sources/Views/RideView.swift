@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RideView: View {
     @EnvironmentObject var engine: RideEngine
-    @State private var showHRHint = false
     @State private var countdown: Int? = nil   // 3、2、1、0(=GO)、nil=关
     @State private var promoDemoStarted = false
     @State private var showPromoTap = false
@@ -68,7 +67,7 @@ struct RideView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             Text(c == 0 ? "GO" : "\(c)")
-                .font(.system(size: 140, weight: .ultraLight))
+                .font(.system(size: 140, weight: .ultraLight, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(c == 0 ? Color.orange : .white)
                 .contentTransition(.opacity)
@@ -82,7 +81,7 @@ struct RideView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("咕咕骑车")
-                    .font(.system(size: 68, weight: .bold))
+                    .font(.system(size: 68, weight: .bold, design: .rounded))
                     .tracking(2)
                 Text("COUCOU BIKE")
                     .font(.system(size: 20, weight: .semibold))
@@ -102,7 +101,7 @@ struct RideView: View {
                         .frame(width: 172, height: 172)
                         .shadow(color: .orange.opacity(0.25), radius: 30)
                     Text("GO")
-                        .font(.system(size: 46, weight: .heavy))
+                        .font(.system(size: 46, weight: .heavy, design: .rounded))
                         .foregroundStyle(.black)
                     if showPromoTap {
                         Image(systemName: "hand.tap.fill")
@@ -116,23 +115,11 @@ struct RideView: View {
             }
             .frame(maxWidth: .infinity)
 
-            // 心率状态：固定高度，出现/消失不挤动布局
+            // 状态行：固定高度，布局稳定
             VStack(spacing: 6) {
-                if engine.state.heartRateSource == .healthKit, let hr = engine.state.heartRate {
-                    Text("\(Int(hr))")
-                        .font(.system(size: 40, weight: .light))
-                        .monospacedDigit()
-                        .foregroundStyle(engine.state.heartRateStale ? Color(white: 0.45) : .orange)
-                    Text(engine.state.heartRateStale ? "BPM · 心率已延迟" : "BPM · 实时心率")
-                        .font(.caption2)
-                        .tracking(2)
-                        .foregroundStyle(Color(white: 0.45))
-                } else {
-                    Text("请打开 Apple Watch 的体能训练以记录心率")
-                        .font(.footnote)
-                        .foregroundStyle(Color(white: 0.55))
-                        .multilineTextAlignment(.center)
-                }
+                Text("按下 GO，咕咕替你开口报数")
+                    .font(.footnote)
+                    .foregroundStyle(Color(white: 0.55))
             }
             .frame(maxWidth: .infinity)
             .frame(height: 84)
@@ -150,7 +137,7 @@ struct RideView: View {
             // 速度
             VStack(spacing: 4) {
                 Text(String(format: "%.1f", engine.state.speedKmh))
-                    .font(.system(size: 96, weight: .ultraLight))
+                    .font(.system(size: 96, weight: .ultraLight, design: .rounded))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 Text("KM/H")
@@ -159,34 +146,21 @@ struct RideView: View {
                     .foregroundStyle(.gray)
             }
 
-            // 距离 + 心率：两块大字；点心率可提示如何连接
+            // 距离 + 用时：两块大字
             HStack(spacing: 0) {
                 bigMetric(value: String(format: "%.2f", engine.state.distanceKm), unit: "距离 KM")
                 Rectangle().fill(Color(white: 0.14)).frame(width: 1, height: 64)
-                bigMetric(value: engine.state.heartRate.map { "\(Int($0))" } ?? "—",
-                          unit: engine.state.heartRateStale ? "心率 · 已延迟" : "心率 BPM",
-                          color: engine.state.heartRateStale ? Color(white: 0.45) : .white)
-                    .onTapGesture { showHRHint = true }
+                bigMetric(value: timeString(engine.state.elapsed), unit: "用时")
             }
             .padding(.top, 20)
-            .alert("想看实时心率？", isPresented: $showHRHint) {
-                Button("打开体能训练") {
-                    if let url = URL(string: "x-apple-fitness://") {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("知道了", role: .cancel) {}
-            } message: {
-                Text("iPhone 没有心率传感器。在手表上开个体能训练，心率会经苹果健康实时显示在这里。")
-            }
 
             Spacer(minLength: 0)
 
             // 辅助行
             HStack {
                 auxStat(value: String(format: "%.1f", engine.state.averageSpeedKmh), label: "均速")
-                auxStat(value: timeString(engine.state.elapsed), label: "用时")
-                auxStat(value: engine.state.cadence.map { "\(Int($0))" } ?? "—", label: "踏频")
+                auxStat(value: String(format: "%.1f", engine.state.maxSpeedKmh), label: "最高")
+                auxStat(value: "\(Int(stateElevationGain))", label: "爬升 M")
                 auxStat(value: "\(Int(engine.state.calories))", label: "千卡")
             }
             .padding(.horizontal, 10)
@@ -213,12 +187,13 @@ struct RideView: View {
         .contentShape(Rectangle())
     }
 
-    private func bigMetric(value: String, unit: String, color: Color = .white) -> some View {
+    private var stateElevationGain: Double { engine.state.elevationGainM }
+
+    private func bigMetric(value: String, unit: String) -> some View {
         VStack(spacing: 6) {
             Text(value)
-                .font(.system(size: 52, weight: .light))
+                .font(.system(size: 52, weight: .light, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(color)
             Text(unit)
                 .font(.caption2)
                 .tracking(3)
@@ -229,7 +204,10 @@ struct RideView: View {
 
     private func auxStat(value: String, label: String) -> some View {
         VStack(spacing: 2) {
-            Text(value).font(.callout).monospacedDigit().foregroundStyle(.white)
+            Text(value)
+                .font(.system(.callout, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
             Text(label).font(.caption2).foregroundStyle(.gray)
         }
         .frame(maxWidth: .infinity)

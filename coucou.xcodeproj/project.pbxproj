@@ -23,7 +23,6 @@
 		9403624BF97790DCAAAB6B24 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 341165BD9284251666AE22C8 /* RootTabView.swift */; };
 		9E9EDE1128C2C5FD0BBFC5E8 /* PraisePool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235D90503C6B7C457366FFFD /* PraisePool.swift */; };
 		A28108F8FCC2B64B21C87193 /* RideActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BBC6B08D2E434DA31F8C4C /* RideActivityAttributes.swift */; };
-		B55140F0E03235BE2406FBBC /* HealthKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 661852B9722343B8CDA1DB92 /* HealthKitStore.swift */; };
 		BC71C88E8578E18E194CC00F /* PedometerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBB9FCD46D233C862416F005 /* PedometerSource.swift */; };
 		CB50FCD05F46E453921BD09D /* CuesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21507F2C07B5CEF0CBA19136 /* CuesView.swift */; };
 		E419C6615DA5A02C4E165EA0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53794E69F6644A06301C01D4 /* SettingsView.swift */; };
@@ -75,7 +74,6 @@
 		4937850F3E610246EA28F22C /* LocationRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationRecorder.swift; sourceTree = "<group>"; };
 		53794E69F6644A06301C01D4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		63B77F42801441409805BBB4 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
-		661852B9722343B8CDA1DB92 /* HealthKitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitStore.swift; sourceTree = "<group>"; };
 		82B2F877F2D02A46F3E4A1F7 /* coucouWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = coucouWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		89890B9A6069886C033F4A06 /* CueSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CueSpeaker.swift; sourceTree = "<group>"; };
 		AB5069D2577504D4564CC9BD /* coucouTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = coucouTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -129,7 +127,6 @@
 			isa = PBXGroup;
 			children = (
 				89890B9A6069886C033F4A06 /* CueSpeaker.swift */,
-				661852B9722343B8CDA1DB92 /* HealthKitStore.swift */,
 				4937850F3E610246EA28F22C /* LocationRecorder.swift */,
 				CBB9FCD46D233C862416F005 /* PedometerSource.swift */,
 				235D90503C6B7C457366FFFD /* PraisePool.swift */,
@@ -337,7 +334,6 @@
 				037367169C105E0BF0971B14 /* BikeCuesApp.swift in Sources */,
 				7147F4B86085DEEC5BC75AF8 /* CueSpeaker.swift in Sources */,
 				CB50FCD05F46E453921BD09D /* CuesView.swift in Sources */,
-				B55140F0E03235BE2406FBBC /* HealthKitStore.swift in Sources */,
 				E822641B757321525B8654E0 /* LocationRecorder.swift in Sources */,
 				5E0A1406EC91603A56B078D3 /* LogView.swift in Sources */,
 				BC71C88E8578E18E194CC00F /* PedometerSource.swift in Sources */,
@@ -374,7 +370,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = bikecues.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -442,7 +437,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				BIKECUES_HK = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -520,7 +514,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = bikecues.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -539,7 +532,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				BIKECUES_HK = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";

@@ -45,3 +45,9 @@
 - 每次事故复盘后：修 bug 的同时在这里登记对应 case，并写进 SmokeTests.swift 或 smoke.sh
 - 断言边界必须实测标定（用真代码、真数据），禁止拍脑袋写宽松到永远通过的断言
 - Case 失效（需求变更导致）不删除，标注"已失效 + 原因"，留追溯
+
+## 2026-09-30 产品大简化（去心率、去健康写入、本地存档）
+
+- case 17 存档闭环：骑行 >60s 结束后 Documents/Rides/ 落一个 JSON，记录页可见、可删、可导出 Markdown（含轨迹每公里分段）
+- case 18 去健康断言：Info.plist 不再含 NSHealth*UsageDescription，工程不含 HealthKit 引用；App 全程不弹健康授权框
+- case 19 界面契约：结算页/详情页无心率项；骑行页大字为速度/距离/用时，辅助行含爬升

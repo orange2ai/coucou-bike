@@ -14,11 +14,6 @@ enum PraisePool {
 
     static let pause = "休息一下，咕咕帮你看着车。放心，咕咕不会骑车。"
 
-    static let highHeartRate: [String] = [
-        "这个心率，咕咕的心也跟着飙了。悠着点。",
-        "心脏在打鼓，咕咕在打 call。",
-    ]
-
     static func finish(distanceKm: Double) -> String {
         "今天骑了 \(Int(distanceKm)) 公里。咕咕为你骄傲，虽然骄傲不能抵扣千卡。"
     }

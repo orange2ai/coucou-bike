@@ -24,8 +24,6 @@ final class SmokeTests: XCTestCase {
                        "缺 NSSupportsLiveActivities：实时活动不会显示")
         XCTAssertNotNil(info["UILaunchScreen"], "缺 UILaunchScreen：杀 App 会白屏")
         for key in ["NSLocationWhenInUseUsageDescription",
-                    "NSHealthShareUsageDescription",
-                    "NSHealthUpdateUsageDescription",
                     "NSMotionUsageDescription"] {
             let value = info[key] as? String
             XCTAssertFalse(value?.isEmpty ?? true, "缺 \(key)")
@@ -113,15 +111,44 @@ final class SmokeTests: XCTestCase {
 
     func testRideActivityContentStateCodable() throws {
         let state = RideActivityAttributes.ContentState(
-            speedKmh: 23.4, distanceKm: 12.48, elapsed: 2452, heartRate: 156, heartRateStale: true, paused: false)
+            speedKmh: 23.4, distanceKm: 12.48, elapsed: 2452, paused: false)
         let data = try JSONEncoder().encode(state)
         let decoded = try JSONDecoder().decode(RideActivityAttributes.ContentState.self, from: data)
         XCTAssertEqual(decoded.speedKmh, 23.4)
         XCTAssertEqual(decoded.distanceKm, 12.48)
         XCTAssertEqual(decoded.elapsed, 2452)
-        XCTAssertEqual(decoded.heartRate, 156)
-        XCTAssertTrue(decoded.heartRateStale, "心率延迟标志必须随契约传到实时活动")
         XCTAssertFalse(decoded.paused)
+    }
+
+    // MARK: - 本地骑行存档
+
+    /// 存档→读回→每公里分段与测距，决定记录页与导出的正确性
+    func testRideRecordArchiveRoundtrip() throws {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        var route: [RideRecord.RidePoint] = []
+        // 沿经线骑 2.2km（每点 100m）
+        for i in 0...22 {
+            route.append(.init(t: Double(i) * 20,
+                               lat: 40.0 + Double(i) * 100.0 / 111_320.0,
+                               lon: 116.0, ele: 10 + Double(i)))
+        }
+        let rec = RideRecord(startDate: start, duration: 440,
+                             distanceKm: 2.2, avgSpeedKmh: 18, maxSpeedKmh: 21,
+                             calories: 120, elevationGainM: 22,
+                             cues: [CueEvent(id: UUID(), date: start, text: "测试", kind: .kmSplit)],
+                             route: route)
+        RideArchive.save(rec)
+        defer { RideArchive.delete(rec) }
+        let all = RideArchive.loadAll()
+        guard let loaded = all.first(where: { $0.id == rec.id }) else {
+            return XCTFail("存档后读不回记录")
+        }
+        XCTAssertEqual(loaded.distanceKm, 2.2, accuracy: 0.001)
+        XCTAssertEqual(loaded.route.count, 23)
+        XCTAssertEqual(loaded.splits.count, 2, "2.2km 应有 2 个整公里分段")
+        XCTAssertGreaterThan(loaded.splits[0].seconds, 0)
+        // 分段用时合理性：100m/20s = 18km/h → 每公里约 200s
+        XCTAssertEqual(loaded.splits[0].seconds, 200, accuracy: 30)
     }
 
     // MARK: - 千卡 MET 分级

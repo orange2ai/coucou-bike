@@ -10,7 +10,6 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: CJSWWQ2B9V
-    BIKECUES_HK: YES
     CODE_SIGN_STYLE: Automatic
 packages:
   ConfettiSwiftUI:
@@ -27,10 +26,6 @@ targets:
     dependencies:
       - target: coucouWidgets
       - package: ConfettiSwiftUI
-    entitlements:
-      path: bikecues.entitlements
-      properties:
-        com.apple.developer.healthkit: true
     settings:
       base:
         GENERATE_INFOPLIST_FILE: NO
@@ -49,15 +44,12 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         NSLocationWhenInUseUsageDescription: 咕咕骑车使用定位获取骑行速度、距离和轨迹，仅用于你的骑行记录。
-        NSHealthShareUsageDescription: 咕咕骑车读取心率等健康数据，用于实时显示与语音播报。数据保留在设备和苹果健康中。
-        NSHealthUpdateUsageDescription: 咕咕骑车将骑行记录写入苹果健康，与其他来源平起平坐，数据属于你。
         NSMotionUsageDescription: 咕咕骑车使用运动与健身数据提升骑行速度的计算精度。
         UIBackgroundModes:
           - location
           - audio
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
-        BIKECUES_HEALTHKIT: $(BIKECUES_HK)
   coucouWidgets:
     type: app-extension
     platform: iOS

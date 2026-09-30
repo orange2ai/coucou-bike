@@ -17,7 +17,7 @@ struct RideSummaryView: View {
 
                 VStack(spacing: 10) {
                     Text("骑完啦")
-                        .font(.system(size: 44, weight: .heavy))
+                        .font(.system(size: 44, weight: .heavy, design: .rounded))
                         .tracking(2)
                     if engine.settings.emotionalValue {
                         Text(PraisePool.finish(distanceKm: state.distanceKm))
@@ -31,7 +31,7 @@ struct RideSummaryView: View {
                 // 主角：距离
                 VStack(spacing: 6) {
                     Text(String(format: "%.2f", state.distanceKm))
-                        .font(.system(size: 96, weight: .ultraLight))
+                        .font(.system(size: 96, weight: .ultraLight, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                     Text("公里")
@@ -49,14 +49,11 @@ struct RideSummaryView: View {
                     summaryStat(String(format: "%.1f", state.averageSpeedKmh), "均速 KM/H")
                     summaryStat(String(format: "%.1f", state.maxSpeedKmh), "最高速 KM/H")
                     summaryStat("\(Int(state.calories))", "千卡")
-                    if let avgHr = averageHeartRate {
-                        summaryStat("\(Int(avgHr))", "平均心率")
-                        summaryStat(engine.rideMaxHr.map { "\(Int($0))" } ?? "—", "最高心率")
-                    }
+                    summaryStat("\(Int(state.elevationGainM))", "爬升 M")
                 }
                 .padding(.horizontal, 16)
 
-                Text("数据已写入苹果健康")
+                Text("已存入本机记录")
                     .font(.caption2)
                     .tracking(2)
                     .foregroundStyle(Color(white: 0.4))
@@ -116,14 +113,10 @@ struct RideSummaryView: View {
         }
     }
 
-    private var averageHeartRate: Double? {
-        engine.rideHrCount > 0 ? engine.rideHrSum / Double(engine.rideHrCount) : nil
-    }
-
     private func summaryStat(_ value: String, _ label: String) -> some View {
         VStack(spacing: 5) {
             Text(value)
-                .font(.system(size: 26, weight: .light))
+                .font(.system(size: 26, weight: .light, design: .rounded))
                 .monospacedDigit()
             Text(label)
                 .font(.caption2)

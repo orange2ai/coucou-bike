@@ -7,8 +7,6 @@ struct RideActivityAttributes: ActivityAttributes {
         var speedKmh: Double
         var distanceKm: Double
         var elapsed: TimeInterval
-        var heartRate: Double?
-        var heartRateStale: Bool = false
         var paused: Bool
     }
 }
