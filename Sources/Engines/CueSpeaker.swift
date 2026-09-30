@@ -12,14 +12,16 @@ final class CueSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         synth.delegate = self
     }
 
-    /// 进入骑行会话的音频配置：混音播放（duckOthers 短暂压低音乐），不中断后台音乐
+    /// 进入骑行会话的音频配置：混音播放，不打断播客/音乐
+    /// 注意：不能用 interruptSpokenAudioAndMixWithOthers，那会暂停小宇宙等播客 App；
+    /// 也不用 duckOthers（会话整场活跃会把别人压低一整路），纯 mixWithOthers 最老实
     func activateSession(mixWithOthers: Bool) {
         let session = AVAudioSession.sharedInstance()
         do {
             if mixWithOthers {
-                try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers])
+                try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             } else {
-                try session.setCategory(.playback, mode: .spokenAudio)
+                try session.setCategory(.playback, mode: .default)
             }
             try session.setActive(true)
         } catch {

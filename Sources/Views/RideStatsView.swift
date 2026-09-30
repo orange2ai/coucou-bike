@@ -25,6 +25,7 @@ struct RideStatsView: View {
         VStack(alignment: .leading, spacing: 14) {
             odometerCard
             chartCard
+            heatmapCard
         }
     }
 
@@ -155,6 +156,142 @@ struct RideStatsView: View {
         .background(Color(white: 0.07))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .animation(.easeOut(duration: 0.2), value: selected?.date)
+    }
+
+    // MARK: - 骑行日历（GitHub 风格橙点热力图）
+
+    /// 最近 26 周，每天累计里程，颜色深浅按当日里程分四档
+    private var heatmapCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("骑行日历")
+                    .font(.subheadline).bold()
+                Spacer()
+                HStack(spacing: 3) {
+                    Text("少")
+                        .font(.caption2).foregroundStyle(Color(white: 0.45))
+                    ForEach(0..<5, id: \.self) { level in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(heatmapColor(level, maxKm: dailyMax))
+                            .frame(width: 10, height: 10)
+                    }
+                    Text("多")
+                        .font(.caption2).foregroundStyle(Color(white: 0.45))
+                }
+            }
+
+            Canvas { context, size in
+                let weeks = heatmapWeeks
+                guard !weeks.isEmpty else { return }
+                let labelHeight: CGFloat = 12
+                let cell = min(size.width / CGFloat(weeks.count), (size.height - labelHeight) / 7)
+                let gap: CGFloat = 2
+                let block = cell - gap
+                let cal = Calendar.current
+
+                // 月份标签：某列的第一天换了月份就标一次
+                var lastMonth = -1
+                for (col, weekStart) in weeks.enumerated() {
+                    let m = cal.component(.month, from: weekStart)
+                    if m != lastMonth {
+                        lastMonth = m
+                        let x = CGFloat(col) * cell
+                        if x + 24 < size.width {
+                            context.draw(
+                                Text(String(format: "%d月", m))
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(Color(white: 0.4)),
+                                at: CGPoint(x: x + 12, y: labelHeight / 2))
+                        }
+                    }
+                }
+
+                for (col, weekStart) in weeks.enumerated() {
+                    for row in 0..<7 {
+                        guard let day = cal.date(byAdding: .day, value: row, to: weekStart) else { continue }
+                        guard day <= Date() else { continue }
+                        let km = dailyKm[cal.startOfDay(for: day)] ?? 0
+                        let level = heatmapLevel(km, maxKm: dailyMax)
+                        let rect = CGRect(x: CGFloat(col) * cell, y: labelHeight + CGFloat(row) * cell,
+                                          width: block, height: block)
+                        context.fill(Path(roundedRect: rect, cornerRadius: 2),
+                                     with: .color(heatmapColor(level, maxKm: dailyMax)))
+                        if let sel = selected?.date, cal.isDate(sel, inSameDayAs: day) {
+                            context.stroke(Path(roundedRect: rect, cornerRadius: 2),
+                                           with: .color(.white), lineWidth: 1.5)
+                        }
+                    }
+                }
+            }
+            .frame(height: 7 * 13 + 12)
+            .contentShape(Rectangle())
+            .onTapGesture { location in
+                let size = heatmapTapSize
+                let weeks = heatmapWeeks
+                guard !weeks.isEmpty else { return }
+                let labelHeight: CGFloat = 12
+                let cell = min(size.width / CGFloat(weeks.count), (size.height - labelHeight) / 7)
+                let col = Int(location.x / cell)
+                let row = Int((location.y - labelHeight) / cell)
+                guard row >= 0, row < 7, col >= 0, col < weeks.count else { return }
+                let cal = Calendar.current
+                guard let day = cal.date(byAdding: .day, value: row, to: weeks[col]), day <= Date() else { return }
+                let km = dailyKm[cal.startOfDay(for: day)] ?? 0
+                selected = (day, km)
+                bucket = .day
+            }
+            .background(GeometryReader { geo in
+                Color.clear.onAppear { heatmapTapSize = geo.size }
+                .onChange(of: geo.size) { _, s in heatmapTapSize = s }
+            })
+        }
+        .padding(14)
+        .background(Color(white: 0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    @State private var heatmapTapSize: CGSize = .zero
+
+    private var dailyKm: [Date: Double] {
+        var map: [Date: Double] = [:]
+        for r in rides {
+            let key = Calendar.current.startOfDay(for: r.date)
+            map[key, default: 0] += r.km
+        }
+        return map
+    }
+
+    private var dailyMax: Double {
+        dailyKm.values.max() ?? 1
+    }
+
+    /// 从本周往回推 26 周，每列一周的起始日（跟随系统 firstWeekday）
+    private var heatmapWeeks: [Date] {
+        let cal = Calendar.current
+        let count = 26
+        let thisWeek = cal.dateInterval(of: .weekOfYear, for: Date())!.start
+        return (0..<count).reversed().compactMap {
+            cal.date(byAdding: .weekOfYear, value: -$0, to: thisWeek)
+        }
+    }
+
+    private func heatmapLevel(_ km: Double, maxKm: Double) -> Int {
+        guard km > 0, maxKm > 0 else { return 0 }
+        let ratio = km / maxKm
+        if ratio > 0.75 { return 4 }
+        if ratio > 0.5 { return 3 }
+        if ratio > 0.25 { return 2 }
+        return 1
+    }
+
+    private func heatmapColor(_ level: Int, maxKm: Double) -> Color {
+        switch level {
+        case 0: return Color(white: 0.13)
+        case 1: return Color.orange.opacity(0.3)
+        case 2: return Color.orange.opacity(0.5)
+        case 3: return Color.orange.opacity(0.75)
+        default: return Color.orange
+        }
     }
 
     // MARK: - 分桶
