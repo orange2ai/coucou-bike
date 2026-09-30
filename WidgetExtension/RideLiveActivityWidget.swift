@@ -26,7 +26,8 @@ struct RideLiveActivityWidget: Widget {
                             .font(.headline).fontWeight(.semibold)
                             .monospacedDigit()
                     }
-                    .padding(.leading, 4)
+                    .padding(.leading, 14)
+                    .padding(.top, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -36,7 +37,8 @@ struct RideLiveActivityWidget: Widget {
                             .font(.headline).fontWeight(.semibold)
                             .monospacedDigit()
                     }
-                    .padding(.trailing, 4)
+                    .padding(.trailing, 14)
+                    .padding(.top, 6)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
@@ -47,9 +49,9 @@ struct RideLiveActivityWidget: Widget {
                         }
                     }
                     .font(.footnote).monospacedDigit()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 6)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 8)
+                    .padding(.bottom, 14)
                 }
             } compactLeading: {
                 Image(systemName: "figure.outdoor.cycle")

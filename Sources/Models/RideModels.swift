@@ -10,6 +10,8 @@ struct RideState {
     var calories: Double = 0
     var elevationM: Double = 0        // 当前海拔
     var elevationGainM: Double = 0    // 累计爬升
+    var recent1kmKmh: Double?         // 最近 1 公里均速
+    var recent5kmKmh: Double?         // 最近 5 公里均速
 }
 
 /// 一条播报记录

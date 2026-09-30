@@ -33,6 +33,8 @@ final class RideEngine: ObservableObject {
     private var lowSpeedTicks = 0
     private var ticker: Timer?
     private var routeBuffer: [RideRecord.RidePoint] = []
+    // 滚动均速采样：(用时秒, 累计公里)，每秒一个点
+    private var rollSamples: [(t: TimeInterval, d: Double)] = []
     private var locNudgeShown = false
     private var lastAccuracy: Double = 0
     private var lastSystemSpeed: Double = 0
@@ -181,6 +183,7 @@ final class RideEngine: ObservableObject {
         firstFix = nil
         lastElevation = nil
         routeBuffer.removeAll()
+        rollSamples.removeAll()
         rideLog("startRide: location auth=\(Self.describe(recorder.authorizationStatus))")
         CueSpeaker.shared.activateSession(mixWithOthers: settings.mixWithAudio)
         if !isPromoDemo {
@@ -316,6 +319,10 @@ final class RideEngine: ObservableObject {
         state.averageSpeedKmh = state.elapsed > 5 ? state.distanceKm / (state.elapsed / 3600) : 0
         // 千卡：MET 分级 × 体重，按秒积分（暂停/自动暂停不计时，与骑行用时一致）
         state.calories += Self.met(forKmh: state.speedKmh) * 3.5 * settings.bodyMassKg / 200 / 60
+        // 滚动均速：最近 1 / 5 公里
+        rollSamples.append((state.elapsed, state.distanceKm))
+        state.recent1kmKmh = rollingSpeedKmh(lastKm: 1)
+        state.recent5kmKmh = rollingSpeedKmh(lastKm: 5)
         RideLiveActivity.shared.update(state: state, paused: false)
 
         // 低速自动暂停：连续 3 秒低于 1 km/h
@@ -446,6 +453,21 @@ final class RideEngine: ObservableObject {
     }
 
     // MARK: - 触发器
+
+    /// 最近 lastKm 公里的均速：用距离-时间采样回溯该距离前的时刻
+    private func rollingSpeedKmh(lastKm: Double) -> Double? {
+        guard let last = rollSamples.last, last.d >= lastKm else { return nil }
+        let targetD = last.d - lastKm
+        // 二分找第一个 d >= targetD 的采样点
+        var lo = 0, hi = rollSamples.count - 1
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if rollSamples[mid].d >= targetD { hi = mid } else { lo = mid + 1 }
+        }
+        let dt = last.t - rollSamples[lo].t
+        guard dt > 1 else { return nil }
+        return lastKm / dt * 3600
+    }
 
     private func checkTriggers() {
         // 每公里

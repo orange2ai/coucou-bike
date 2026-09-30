@@ -166,6 +166,18 @@ struct RideView: View {
             .padding(.horizontal, 10)
             .padding(.bottom, 4)
 
+            // 滚动均速：一条一条列出来
+            VStack(spacing: 6) {
+                if let v = engine.state.recent1kmKmh {
+                    rollingRow("最近 1 公里", v)
+                }
+                if let v = engine.state.recent5kmKmh {
+                    rollingRow("最近 5 公里", v)
+                }
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 6)
+
             // 最新播报
             Text(engine.cues.first?.text ?? " ")
                 .font(.footnote)
@@ -188,6 +200,20 @@ struct RideView: View {
     }
 
     private var stateElevationGain: Double { engine.state.elevationGainM }
+
+    private func rollingRow(_ label: String, _ kmh: Double) -> some View {
+        HStack {
+            Text(label)
+                .font(.footnote)
+                .foregroundStyle(.gray)
+            Spacer()
+            Text(String(format: "%.1f km/h", kmh))
+                .font(.system(.footnote, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+        }
+        .contentTransition(.numericText())
+    }
 
     private func bigMetric(value: String, unit: String) -> some View {
         VStack(spacing: 6) {
