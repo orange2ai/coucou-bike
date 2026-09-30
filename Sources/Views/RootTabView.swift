@@ -9,8 +9,8 @@ struct RootTabView: View {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-startTab"), i + 1 < args.count else { return 0 }
         switch args[i + 1] {
-        case "cues": return 1
-        case "log": return 2
+        case "log": return 1
+        case "cues": return 2
         case "settings": return 3
         default: return 0
         }
@@ -21,11 +21,11 @@ struct RootTabView: View {
             RideView()
                 .tabItem { Label("骑行", systemImage: "bicycle") }
                 .tag(0)
-            CuesView()
-                .tabItem { Label("播报", systemImage: "speaker.wave.2") }
-                .tag(1)
             LogView()
                 .tabItem { Label("记录", systemImage: "book.closed") }
+                .tag(1)
+            CuesView()
+                .tabItem { Label("播报", systemImage: "speaker.wave.2") }
                 .tag(2)
             SettingsView()
                 .tabItem { Label("设置", systemImage: "gearshape") }
