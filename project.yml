@@ -26,6 +26,10 @@ targets:
     dependencies:
       - target: coucouWidgets
       - package: ConfettiSwiftUI
+    entitlements:
+      path: bikecues.entitlements
+      properties:
+        com.apple.developer.healthkit: true
     settings:
       base:
         GENERATE_INFOPLIST_FILE: NO
@@ -44,6 +48,7 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         NSLocationWhenInUseUsageDescription: 咕咕骑车使用定位获取骑行速度、距离和轨迹，仅用于你的骑行记录。
+        NSHealthShareUsageDescription: 咕咕骑车读取苹果健康中的骑行训练（手表写入的也算），用于展示历史记录与导出。只读，不写入。
         NSMotionUsageDescription: 咕咕骑车使用运动与健身数据提升骑行速度的计算精度。
         UIBackgroundModes:
           - location

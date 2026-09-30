@@ -3,7 +3,8 @@ import Charts
 
 /// 记录页顶部统计区：总里程（保养进度）+ 日/周/月里程柱状图
 struct RideStatsView: View {
-    let records: [RideRecord]
+    /// 健康训练与本地记录合并后的 (日期, 公里) 列表
+    let rides: [(date: Date, km: Double)]
 
     enum Bucket: String, CaseIterable, Identifiable {
         case day = "日"
@@ -15,7 +16,7 @@ struct RideStatsView: View {
     @State private var bucket: Bucket = .day
     @State private var selected: (date: Date, km: Double)?
 
-    private var totalKm: Double { records.reduce(0) { $0 + $1.distanceKm } }
+    private var totalKm: Double { rides.reduce(0) { $0 + $1.km } }
     private var serviceInterval: Double { 1000 }
     private var nextServiceKm: Double { (floor(totalKm / serviceInterval) + 1) * serviceInterval }
     private var remainingKm: Double { max(0, nextServiceKm - totalKm) }
@@ -232,18 +233,18 @@ struct RideStatsView: View {
             }
             result.append((start, 0))
         }
-        for r in records {
+        for r in rides {
             let key: Date
             switch bucket {
             case .day:
-                key = cal.startOfDay(for: r.startDate)
+                key = cal.startOfDay(for: r.date)
             case .week:
-                key = cal.dateInterval(of: .weekOfYear, for: r.startDate)!.start
+                key = cal.dateInterval(of: .weekOfYear, for: r.date)!.start
             case .month:
-                key = cal.dateInterval(of: .month, for: r.startDate)!.start
+                key = cal.dateInterval(of: .month, for: r.date)!.start
             }
             if let idx = result.firstIndex(where: { $0.0 == key }) {
-                result[idx].1 += r.distanceKm
+                result[idx].1 += r.km
             }
         }
         return result.map { (date: $0.0, km: $0.1) }

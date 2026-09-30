@@ -24,10 +24,13 @@ final class SmokeTests: XCTestCase {
                        "缺 NSSupportsLiveActivities：实时活动不会显示")
         XCTAssertNotNil(info["UILaunchScreen"], "缺 UILaunchScreen：杀 App 会白屏")
         for key in ["NSLocationWhenInUseUsageDescription",
+                    "NSHealthShareUsageDescription",
                     "NSMotionUsageDescription"] {
             let value = info[key] as? String
             XCTAssertFalse(value?.isEmpty ?? true, "缺 \(key)")
         }
+        XCTAssertNil(info["NSHealthUpdateUsageDescription"],
+                     "咕咕只读健康，不应声明写入用途")
     }
 
     func testWidgetExtensionIsEmbeddedAndValid() throws {
