@@ -51,3 +51,8 @@
 - case 17 存档闭环：骑行 >60s 结束后 Documents/Rides/ 落一个 JSON，记录页可见、可删、可导出 Markdown（含轨迹每公里分段）
 - case 18 去健康断言：Info.plist 不再含 NSHealth*UsageDescription，工程不含 HealthKit 引用；App 全程不弹健康授权框
 - case 19 界面契约：结算页/详情页无心率项；骑行页大字为速度/距离/用时，辅助行含爬升
+
+## 2026-09-30 15:25 记录页改回健康只读
+
+- case 20 健康只读断言：Info.plist 有 NSHealthShareUsageDescription、无 NSHealthUpdateUsageDescription；HealthKitStore 无任何写入 API；requestAuthorization toShare 为空
+- case 21 记录页合并视图：手表写入健康的骑行训练与本机存档都出现在列表、总里程与柱状图
