@@ -3,144 +3,230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>咕咕骑车 · Coucou Bike</title>
-<meta name="description" content="骑行时，有一只鸟在你耳机里报数。速度、距离、心率，语音播报，数据写入苹果健康。无广告，开源，买断。">
-<link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
-<meta property="og:title" content="咕咕骑车 · Coucou Bike">
-<meta property="og:description" content="骑行时，有一只鸟在你耳机里报数。">
-<meta property="og:image" content="icon.png">
+<title>咕咕骑车 Coucou Bike — 骑行时，有一只鸟在你耳机里报数</title>
+<meta name="description" content="骑行语音播报 App。速度、距离、滚动均速，说给你听；总里程、柱状图、骑行日历，一眼看清。只读苹果健康，不写入，不收集，无广告。">
+<link rel="icon" href="icon.png">
 <style>
-  :root { --orange: #FF9500; --dim: #8a8a8e; }
+  :root {
+    --bg: #000;
+    --card: #101010;
+    --card2: #171717;
+    --orange: #FF8A1E;
+    --orange-soft: rgba(255, 138, 30, 0.12);
+    --text: #F5F5F5;
+    --muted: #9A9A9A;
+    --line: #222;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    background: #000; color: #f5f5f7;
-    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
-    -webkit-font-smoothing: antialiased;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    line-height: 1.7;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 28px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-  /* ---- hero ---- */
-  .hero { padding: 110px 0 90px; text-align: center; }
-  .hero img {
-    width: 128px; height: 128px; border-radius: 29px;
-    box-shadow: 0 0 80px rgba(255,149,0,.28), 0 0 24px rgba(255,149,0,.18);
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0;
   }
-  .hero h1 { font-size: clamp(52px, 11vw, 84px); font-weight: 800; margin-top: 36px; letter-spacing: 2px; }
-  .hero .en { color: var(--orange); font-weight: 600; letter-spacing: 8px; font-size: clamp(13px, 2.6vw, 18px); margin-top: 10px; }
-  .hero .tag { color: var(--dim); font-size: 19px; margin-top: 26px; line-height: 1.7; }
-  .hero .badge {
-    display: inline-block; margin-top: 40px; padding: 12px 26px;
-    border: 1px solid rgba(255,149,0,.5); border-radius: 999px;
-    color: var(--orange); font-size: 15px; letter-spacing: 1px;
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 18px; }
+  .brand img { width: 40px; height: 40px; border-radius: 10px; }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 26px; font-size: 15px; }
+  nav a:hover { color: var(--orange); }
+
+  .hero { text-align: center; padding: 72px 0 40px; }
+  .hero h1 { font-size: clamp(34px, 6vw, 56px); font-weight: 800; letter-spacing: 1px; }
+  .hero h1 .accent { color: var(--orange); }
+  .hero p.sub { color: var(--muted); font-size: clamp(16px, 2.4vw, 20px); margin-top: 18px; }
+  .hero .cta { margin-top: 30px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 26px; border-radius: 24px;
+    text-decoration: none; font-size: 15px; font-weight: 600;
   }
+  .btn.primary { background: var(--orange); color: #000; }
+  .btn.ghost { border: 1px solid #333; color: var(--text); }
+  .btn.ghost:hover { border-color: var(--orange); color: var(--orange); }
 
-  /* ---- 通用 section ---- */
-  section { padding: 70px 0; border-top: 1px solid rgba(255,255,255,.07); }
-  section h2 { font-size: 28px; font-weight: 700; margin-bottom: 34px; }
-  section h2 span { color: var(--orange); margin-right: 10px; font-size: 20px; }
+  .phones {
+    display: flex; justify-content: center; gap: 28px; flex-wrap: wrap;
+    margin: 56px 0 24px;
+  }
+  .phone {
+    background: #000; border: 3px solid #2A2A2A; border-radius: 40px;
+    padding: 10px; width: 250px; box-shadow: 0 24px 60px rgba(255,138,30,.08);
+  }
+  .phone img { width: 100%; border-radius: 30px; display: block; }
+  .phone figcaption { text-align: center; color: var(--muted); font-size: 13px; padding: 10px 0 4px; }
 
-  /* ---- 播报演示 ---- */
-  .cues { display: flex; flex-direction: column; gap: 14px; }
+  section { padding: 72px 0; border-top: 1px solid var(--line); }
+  .kicker { color: var(--orange); font-size: 13px; letter-spacing: 4px; font-weight: 700; }
+  h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; margin: 10px 0 14px; }
+  .lead { color: var(--muted); max-width: 640px; font-size: 17px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  .split.rev { direction: rtl; }
+  .split.rev > * { direction: ltr; }
+  .split .phone { width: 240px; margin: 0 auto; }
+  @media (max-width: 760px) { .split { grid-template-columns: 1fr; gap: 28px; } }
+
+  ul.feats { list-style: none; margin-top: 20px; }
+  ul.feats li { padding: 10px 0; border-bottom: 1px dashed #1E1E1E; font-size: 16px; }
+  ul.feats li:last-child { border-bottom: none; }
+  ul.feats b { color: var(--orange); font-weight: 700; margin-right: 8px; }
+
+  .cues { margin-top: 26px; display: grid; gap: 12px; }
   .cue {
-    background: #111; border: 1px solid rgba(255,255,255,.08);
-    border-radius: 18px; padding: 18px 22px; font-size: 16px; line-height: 1.6;
+    background: var(--card2); border: 1px solid #232323; border-radius: 14px;
+    padding: 14px 18px; font-size: 15px;
   }
-  .cue b { color: var(--orange); font-weight: 700; margin-right: 8px; }
-  .cue .km { float: right; color: #555; font-size: 13px; }
+  .cue .km { color: var(--orange); font-weight: 700; font-size: 12px; letter-spacing: 2px; display: block; margin-bottom: 4px; }
 
-  /* ---- 原则 ---- */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
-  .card {
-    background: #111; border: 1px solid rgba(255,255,255,.08);
-    border-radius: 18px; padding: 24px;
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
+  @media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } }
+  .stat-card {
+    background: var(--card); border: 1px solid #232323; border-radius: 18px; padding: 26px 22px;
   }
-  .card h3 { font-size: 17px; margin-bottom: 8px; }
-  .card p { color: var(--dim); font-size: 14px; line-height: 1.7; }
+  .stat-card .n { font-size: 34px; font-weight: 800; color: var(--orange); font-variant-numeric: tabular-nums; }
+  .stat-card .t { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
-  /* ---- 故事 ---- */
-  .story { font-size: 17px; line-height: 2; color: #c7c7cc; }
-  .story strong { color: #fff; }
-  .story .quote {
-    margin-top: 26px; padding-left: 18px; border-left: 3px solid var(--orange);
-    color: var(--orange); font-size: 15px;
+  .principles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 30px; }
+  @media (max-width: 760px) { .principles { grid-template-columns: 1fr; } }
+  .principle {
+    background: var(--card); border: 1px solid #232323; border-radius: 16px; padding: 20px 22px;
   }
+  .principle .no { color: var(--orange); font-size: 12px; font-weight: 700; letter-spacing: 2px; }
+  .principle h3 { font-size: 16px; margin: 6px 0; }
+  .principle p { color: var(--muted); font-size: 14px; }
 
-  /* ---- footer ---- */
-  footer { border-top: 1px solid rgba(255,255,255,.07); padding: 44px 0 60px; }
-  .foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
-  .foot a {
-    color: var(--orange); text-decoration: none; font-size: 15px;
-    border: 1px solid rgba(255,149,0,.45); border-radius: 999px; padding: 10px 24px;
-  }
-  .foot a:hover { background: rgba(255,149,0,.12); }
-  .foot span { color: #555; font-size: 13px; }
+  footer { border-top: 1px solid var(--line); padding: 40px 0 60px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--orange); }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+  <header>
+    <div class="brand">
+      <img src="icon.png" alt="咕咕骑车图标">
+      咕咕骑车 <span style="color:var(--muted);font-weight:400;font-size:14px">Coucou Bike</span>
+    </div>
+    <nav>
+      <a href="#cues">播报</a>
+      <a href="#stats">记录</a>
+      <a href="#privacy">隐私</a>
+      <a href="https://github.com/orange2ai/coucou-bike">GitHub</a>
+    </nav>
+  </header>
+
   <div class="hero">
-    <img src="icon.png" alt="咕咕骑车 App 图标">
-    <h1>咕咕骑车</h1>
-    <p class="en">COUCOU BIKE</p>
-    <p class="tag">骑行时，有一只鸟在你耳机里报数。<br>速度、距离、心率，说给你听。</p>
-    <span class="badge">App Store 即将上架 · 首发限免</span>
+    <h1>骑行时，有一只<span class="accent">鸟</span>在你耳机里报数</h1>
+    <p class="sub">速度、距离、滚动均速，该报的报，顺便夸夸你。<br>数据一眼看清，只读健康，绝不打扰你的播客。</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/orange2ai/coucou-bike">GitHub 开源</a>
+      <a class="btn ghost" href="#stats">看看记录页</a>
+    </div>
   </div>
 
-  <section>
-    <h2><span>01</span>它怎么说话</h2>
-    <div class="cues">
-      <div class="cue"><span class="km">第 1 公里</span><b>咕咕！</b>已经骑行 1 公里，最近一公里平均速度 23 公里。</div>
-      <div class="cue"><span class="km">第 2 公里</span><b>咕咕！</b>已经骑行 2 公里，最近一公里平均速度 25 公里，平均心率 142。</div>
-      <div class="cue"><span class="km">爬坡</span><b>咕咕！</b>心率进入五区，当前 178，悠着点。</div>
-      <div class="cue"><span class="km">结束</span><b>咕咕！</b>骑行结束，数据已写入苹果健康。</div>
-    </div>
-  </section>
-
-  <section>
-    <h2><span>02</span>它的原则</h2>
-    <div class="grid">
-      <div class="card"><h3>无广告，永久</h3><p>不卖货，不打广告，不搞歪门邪道。你买的是软件本身。</p></div>
-      <div class="card"><h3>数据永不丢失</h3><p>数据只在你本机与苹果健康里，无服务器，随时全量导出 Markdown。</p></div>
-      <div class="card"><h3>原生</h3><p>深度打通苹果健康，记录按最兼容的方式写入，不另建孤岛。</p></div>
-      <div class="card"><h3>开源 · 买断</h3><p>代码公开仅限自用；商店版一次付费，永久使用。</p></div>
-    </div>
-  </section>
-
-  <section>
-    <h2><span>03</span>为什么叫咕咕</h2>
-    <p class="story">
-      布谷鸟是最老的提醒器：黑森林的钟每整点跳出来报一次时；在中国民间，
-      它的叫声就是<strong>"播谷"</strong>，提醒农人下地；法语里 coucou 既是它的叫声，
-      也是熟人之间那句轻快的<strong>"嗨～"</strong>。
-      每公里跟你说一句话的骑行 App，和它属于同一个物种。
-    </p>
-    <p class="quote">咕咕！该出发了。</p>
-  </section>
-
-  <section>
-    <h2><span>04</span>开源，看得见</h2>
-    <p class="story">
-      咕咕骑车的代码公开在 GitHub 上：怎么算速度、怎么读心率、怎么说话，你都能自己读一遍。
-      它没有服务器，不上传你的任何数据，也不需要你相信我们的承诺，代码本身就是证明。
-    </p>
-    <div class="cues" style="margin-top:22px">
-      <a class="cue" href="https://github.com/orange2ai/coucou-bike" style="display:block;text-decoration:none;color:inherit">
-        <span class="km">GitHub</span><b>orange2ai/coucou-bike</b> · 源码、路线图与功能心愿单都在这里，欢迎自建与提建议。
-      </a>
-    </div>
-  </section>
-
-  <footer>
-    <div class="foot">
-      <a href="https://github.com/orange2ai/coucou-bike">GitHub 开源仓库</a>
-      <a href="/privacy.html">隐私政策</a>
-      <span>© 2026 Coucou Bike · 永不出现广告</span>
-    </div>
-  </footer>
+  <div class="phones">
+    <figure class="phone">
+      <img src="img/ride.png" alt="骑行中界面">
+      <figcaption>骑行中 · 纯黑 OLED</figcaption>
+    </figure>
+    <figure class="phone">
+      <img src="img/log.png" alt="记录页界面">
+      <figcaption>记录 · 里程与日历</figcaption>
+    </figure>
+    <figure class="phone">
+      <img src="img/summary.png" alt="结算页界面">
+      <figcaption>骑完啦 · 仪式感收尾</figcaption>
+    </figure>
+  </div>
 </div>
+
+<section id="cues">
+  <div class="wrap split">
+    <div>
+      <div class="kicker">VOICE CUES</div>
+      <h2>替你开口的副驾</h2>
+      <p class="lead">每公里报一次数，配速掉线提醒你，骑完还有一句不正经的夸奖。混音播放，不暂停你的音乐和播客。</p>
+      <div class="cues">
+        <div class="cue"><span class="km">每公里</span>咕咕！已经骑行 2 公里，最近一公里平均速度 25 公里。这个配速，风都得让你三分。</div>
+        <div class="cue"><span class="km">室内 / 隧道</span>GPS 信号很弱，咕咕可能被墙挡住了。到空旷处或窗边试试</div>
+        <div class="cue"><span class="km">骑完啦</span>今天骑了 21 公里。咕咕为你骄傲，虽然骄傲不能抵扣千卡。</div>
+      </div>
+    </div>
+    <figure class="phone">
+      <img src="img/ride.png" alt="骑行播报界面">
+    </figure>
+  </div>
+</section>
+
+<section id="stats">
+  <div class="wrap split rev">
+    <div>
+      <div class="kicker">RIDE LOG</div>
+      <h2>你的骑行档案</h2>
+      <p class="lead">手表记的、手机记的，都汇成一个总里程。什么时候该保养、这个月骑了多少，打开就有。</p>
+      <ul class="feats">
+        <li><b>总里程</b>单车里程累计，按 1000 公里提醒你该保养了</li>
+        <li><b>柱状图</b>日、周、月三档，看趋势一眼就够</li>
+        <li><b>骑行日历</b>GitHub 风格的橙点热力图，偷懒的日子藏不住</li>
+        <li><b>滚动均速</b>最近 1 公里、最近 5 公里，逐行实时更新</li>
+        <li><b>全量导出</b>每条骑行一键导出 Markdown，轨迹和分段都在</li>
+      </ul>
+    </div>
+    <figure class="phone">
+      <img src="img/log.png" alt="记录页统计">
+    </figure>
+  </div>
+
+  <div class="wrap">
+    <div class="grid3">
+      <div class="stat-card">
+        <div class="n">只读</div>
+        <div class="t">读取苹果健康里的骑行训练（手表写的也算），绝不写入一个字节</div>
+      </div>
+      <div class="stat-card">
+        <div class="n">0 台服务器</div>
+        <div class="t">无账号无上传，数据全在本机，随时导出随时带走</div>
+      </div>
+      <div class="stat-card">
+        <div class="n">0 广告</div>
+        <div class="t">永久不出现广告，播报里也不塞广告，永远是你的耳机</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap">
+    <div class="kicker">PRINCIPLES</div>
+    <h2>咕咕骑车的原则</h2>
+    <div class="principles">
+      <div class="principle"><div class="no">01</div><h3>省电</h3><p>骑行是长时间运动。OLED 纯黑即熄灭，骑行页永远 100% 黑底，不需要变暗的花招。</p></div>
+      <div class="principle"><div class="no">02</div><h3>原生</h3><p>速度用 iPhone 定位与运动协处理器直接算，室内 GPS 被挡也能兜底。不导流，不另建孤岛。</p></div>
+      <div class="principle"><div class="no">03</div><h3>数据永不丢失</h3><p>数据都在本机与健康，无服务器，随时全量导出 Markdown。你的数据属于你，也随时可以离开。</p></div>
+      <div class="principle"><div class="no">04</div><h3>无广告，永久</h3><p>永久不出现广告，也不卖货。播报是你的耳机，不是别人的货架。</p></div>
+      <div class="principle"><div class="no">05</div><h3>开源，仅限自用</h3><p>代码公开，欢迎学习和自建。仅限非商业用途。</p></div>
+      <div class="principle"><div class="no">06</div><h3>不发明 UI</h3><p>能用苹果就苹果：锁屏卡片像锁屏卡片，日历像日历。不重新发明系统已经做好的东西。</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>咕咕骑车 Coucou Bike · 骑行时，有一只鸟在你耳机里报数</div>
+    <div>
+      <a href="https://coucoubike.com">coucoubike.com</a> ·
+      <a href="https://github.com/orange2ai/coucou-bike">GitHub</a> ·
+      <a href="privacy.html">隐私政策</a>
+    </div>
+  </div>
+</footer>
 
 </body>
 </html>

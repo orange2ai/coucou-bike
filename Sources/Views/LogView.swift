@@ -185,8 +185,11 @@ struct LogView: View {
     private func load() async {
         loading = true
         Self.seedDemoDataIfNeeded()
-        try? await HealthKitStore.shared.requestAuthorization()
-        workouts = await HealthKitStore.shared.recentWorkouts()
+        // 截图/演示模式不弹健康授权，演示数据全在本机
+        if !ProcessInfo.processInfo.arguments.contains("-demoData") {
+            try? await HealthKitStore.shared.requestAuthorization()
+            workouts = await HealthKitStore.shared.recentWorkouts()
+        }
         localRecords = RideArchive.loadAll()
         loading = false
     }

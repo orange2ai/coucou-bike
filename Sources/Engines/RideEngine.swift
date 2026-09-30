@@ -395,6 +395,9 @@ final class RideEngine: ObservableObject {
         state.maxSpeedKmh = max(state.maxSpeedKmh, state.speedKmh)
         state.averageSpeedKmh = 20
         state.calories = 9.8 * state.elapsed / 60
+        state.recent1kmKmh = 19.4 + sin(Double(ticks) * 0.9) * 1.4
+        state.recent5kmKmh = 20.2 + sin(Double(ticks) * 0.5) * 0.8
+        state.elevationGainM = Double(ticks) * 36
 
         if ticks == 4 {
             cue("已经骑行 5 公里，最近一公里平均速度 20 公里", kind: .kmSplit)
