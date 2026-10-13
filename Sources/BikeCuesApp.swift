@@ -10,9 +10,16 @@ struct BikeCuesApp: App {
                 .environmentObject(engine)
                 .preferredColorScheme(.dark)
                 .onAppear {
-                    // 调试用：-autoRide 启动即开骑，-autoEnd 65 秒后自动结束（方便无人值守看结算页）
+                    // 启动即清掉上一场没正常结束的实时活动（进程被杀时留下的残影）
+                    if engine.phase == .idle {
+                        RideLiveActivity.shared.clearStale()
+                    }
+                    // 调试用：-autoRide 启动即开骑（默认 68 秒后自动收尾，避免测试把定位和实时活动一直挂着）
                     if CommandLine.arguments.contains("-autoRide") {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { engine.startRide() }
+                        if !CommandLine.arguments.contains("-keepRiding") {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 70) { engine.endRide() }
+                        }
                     }
                     if CommandLine.arguments.contains("-autoEnd") {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 68) { engine.endRide() }

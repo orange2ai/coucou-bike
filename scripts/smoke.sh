@@ -24,6 +24,16 @@ SIM_ID=$(xcrun simctl list devices available | grep -m1 -E "iPhone" | sed -E 's/
 [ -n "$SIM_ID" ] || fail "没有可用的 iPhone 模拟器"
 echo "模拟器: $SIM_ID"
 
+# 收尾：不管成功失败，都把 App 杀掉；本脚本自己启动的模拟器顺手关掉（不留下常驻定位/实时活动）
+WAS_BOOTED=$(xcrun simctl list devices | grep "$SIM_ID" | grep -c "Booted" || true)
+cleanup() {
+  xcrun simctl terminate "$SIM_ID" ai.marswave.coucou > /dev/null 2>&1 || true
+  if [ "$WAS_BOOTED" -eq 0 ]; then
+    xcrun simctl shutdown "$SIM_ID" > /dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
 DD=/tmp/coucou-smoke-dd
 
 step "模拟器全量编译"
@@ -82,5 +92,9 @@ sleep 78
 ALIVE=$(xcrun simctl spawn "$SIM_ID" launchctl list 2>/dev/null | grep -c "ai.marswave.coucou" || true)
 [ "$ALIVE" -ge 1 ] || fail "骑行生命周期中进程消失（GO/结算页闪退）"
 echo "骑行生命周期存活 ✓"
+
+cleanup
+trap - EXIT
+echo "清理：已杀掉 App，模拟器已收工"
 
 echo -e "\n✅ 冒烟测试全部通过"

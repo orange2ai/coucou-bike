@@ -52,6 +52,8 @@ final class LocationRecorder: NSObject, CLLocationManagerDelegate {
     private var lastFixTime: Date?
     /// 后台定位开关是否已设置（设置过就不用再设）
     private var backgroundModeApplied = false
+    /// 是否处于记录中（start 之后、stop 之前）
+    private var isRunning = false
 
     /// 新定位点回调（主线程）：位置 + 自己算的速度 km/h + 本次新增距离（米）
     var onLocation: ((CLLocation, Double, Double) -> Void)?
@@ -96,11 +98,13 @@ final class LocationRecorder: NSObject, CLLocationManagerDelegate {
 
     func start() {
         reset()
+        isRunning = true
         applyBackgroundMode()
         manager.startUpdatingLocation()
     }
 
     func stop() {
+        isRunning = false
         manager.stopUpdatingLocation()
         reset()
     }
@@ -115,10 +119,11 @@ final class LocationRecorder: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onAuthorizationChange?(manager.authorizationStatus)
-        if isAuthorized {
-            applyBackgroundMode()
-            manager.startUpdatingLocation()
-        }
+        // 这个回调在设置 delegate（App 启动）时就会触发一次。
+        // 只有记录中才真正开始定位，否则 App 一打开就会常驻定位。
+        guard isRunning, isAuthorized else { return }
+        applyBackgroundMode()
+        manager.startUpdatingLocation()
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {

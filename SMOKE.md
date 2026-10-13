@@ -56,3 +56,14 @@
 
 - case 20 健康只读断言：Info.plist 有 NSHealthShareUsageDescription、无 NSHealthUpdateUsageDescription；HealthKitStore 无任何写入 API；requestAuthorization toShare 为空
 - case 21 记录页合并视图：手表写入健康的骑行训练与本机存档都出现在列表、总里程与柱状图
+
+## 2026-10-13 打开 App 不该碰定位（用户实测反馈“打开 app 后会一直调用定位”）
+
+- case 22 启动不定位：授权后普通打开 App（不进骑行），locationd 日志里不得出现 `subscribing to notification kCLConnectionMessageLocation` 与 `#sbim client arrow state changed` 的 0 -> 1（状态栏定位箭头必须不亮）。
+  - 根因：`locationManagerDidChangeAuthorization` 在设置 delegate（也就是 App 启动、RideEngine 初始化）时就会触发一次，旧代码无条件 `startUpdatingLocation()`，于是 App 一打开就常驻定位。
+  - 修法：`LocationRecorder` 加 `isRunning` 标志，只有 start() 之后才允许定位；授权回调里加 `guard isRunning, isAuthorized`。
+  - 验证方式（模拟器可复现，不用真机）：`xcrun simctl spawn <sim> log show --predicate 'process == "locationd" AND eventMessage CONTAINS "<bundle id>"'`，看箭头状态与订阅记录。注意：模拟器截图里状态栏**不会**画定位箭头，只能靠 locationd 日志判断。
+- case 23 骑行中/补授权限后定位必须正常接管：无权限状态下开骑，随后才授权，locationd 必须出现箭头 0 -> 1 与定位订阅（防止 case 22 的修法把正常链路一起挡掉）。
+- case 24 实时活动残影：`-autoRide -keepRiding` 后直接 terminate 进程（模拟崩溃/强杀），重新打开 App 必须清掉上一场的实时活动（主屏灵动岛不再显示骑行速度）。
+  - 根因：`RideLiveActivity.clearStale()` 只在开新骑行时调用，启动时没调，注释却写着“App 启动时上一场骑行必然已结束”。
+- 流程：smoke.sh 结束必须清场（terminate App；本次自己启动的模拟器顺手关掉），不留常驻定位与实时活动；`-autoRide` 默认 70 秒自动收尾，要长骑用 `-keepRiding`。
