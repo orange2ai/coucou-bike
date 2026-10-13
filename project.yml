@@ -7,25 +7,17 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
     DEVELOPMENT_TEAM: CJSWWQ2B9V
     CODE_SIGN_STYLE: Automatic
-packages:
-  ConfettiSwiftUI:
-    url: https://github.com/simibac/ConfettiSwiftUI.git
-    from: 2.0.0
 targets:
   coucou:
     type: application
     platform: iOS
     sources:
       - Sources
-      - Shared
       - Assets.xcassets
-    dependencies:
-      - target: coucouWidgets
-      - package: ConfettiSwiftUI
     entitlements:
       path: bikecues.entitlements
       properties:
@@ -47,27 +39,7 @@ targets:
           - 2
         UILaunchScreen:
           UIColorName: LaunchBackground
-        NSLocationWhenInUseUsageDescription: 咕咕骑车使用定位获取骑行速度、距离和轨迹，仅用于你的骑行记录。
-        NSHealthShareUsageDescription: 咕咕骑车读取苹果健康中的骑行训练（手表写入的也算），用于展示历史记录与导出。只读，不写入。
-        NSMotionUsageDescription: 咕咕骑车使用运动与健身数据提升骑行速度的计算精度。
-        UIBackgroundModes:
-          - location
-          - audio
-        NSSupportsLiveActivities: true
-        NSSupportsLiveActivitiesFrequentUpdates: true
-  coucouWidgets:
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: WidgetExtension
-        excludes:
-          - "Info.plist"
-      - Shared
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.marswave.coucou.coucouWidgets
-        INFOPLIST_FILE: WidgetExtension/Info.plist
-        SUPPORTS_MACCATALYST: NO
+        NSHealthShareUsageDescription: 咕咕骑车读取苹果健康中的骑行训练（手表写入的也算），用于展示骑行数据与导出。只读，不写入。
   coucouTests:
     type: bundle.unit-test
     platform: iOS
@@ -83,7 +55,6 @@ schemes:
     build:
       targets:
         coucou: all
-        coucouWidgets: all
     test:
       config: Debug
       targets:

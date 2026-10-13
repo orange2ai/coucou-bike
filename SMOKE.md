@@ -4,66 +4,68 @@
 
 运行方式：`./scripts/smoke.sh`（日常）/ `./scripts/release.sh`（正式发版，强制）
 
-## 工程完整性（每条都流过血）
+## 2026-10-13 产品收敛说明
+
+产品从「骑行播报 App」收敛为「苹果健康骑行数据的展示层」：
+播报、实时骑行页、结算页、实时活动、定位、计步器、音频会话、本机存档全部删除，
+数据只从苹果健康只读读取。因此下表里所有与实时骑行、播报、实时活动、本机存档相关的
+case 已失效并归档到文末，现行 case 只剩工程契约与展示层数据契约。
+
+## 工程完整性（现行）
 
 | # | Case | 防的是什么 | 加入日期 |
 |---|------|-----------|---------|
-| 1 | App Info.plist 必须含 `UIBackgroundModes: [location, audio]` | 2026-09-23 GO 倒数完闪退：xcodegen 生成模式吞掉自定义 plist，后台定位声明丢失，`allowsBackgroundLocationUpdates` 一设即崩 | 2026-09-23 |
-| 2 | App Info.plist 必须含 `NSSupportsLiveActivities`、`UILaunchScreen`、四个权限文案 | 同上事故连带：实时活动不显示、杀 App 白屏回归 | 2026-09-23 |
-| 3 | coucouWidgets.appex 必须嵌入主 App 且 Info.plist 带 `NSExtension.NSExtensionPointIdentifier = com.apple.widgetkit-extension` | 2026-09-23 装机失败：appex 缺 NSExtension 字典，devicectl 报错 3002 | 2026-09-23 |
+| 25 | Info.plist 只声明健康读取：有 `NSHealthShareUsageDescription`，无 `NSHealthUpdateUsageDescription` | 只读承诺被破坏（写入健康） | 2026-10-13 |
+| 26 | Info.plist 不含 `NSLocationWhenInUseUsageDescription`、`NSMotionUsageDescription`、`UIBackgroundModes`、`NSSupportsLiveActivities` | 已删除的链路偷偷回流：多一个权限就多一份审核解释与耗电理由 | 2026-10-13 |
+| 27 | 装机产物不得嵌入任何 `.appex` | 实时活动 Widget 已删除，扩展回流会让构建与发布复杂化 | 2026-10-13 |
+| 28 | Info.plist 必须含 `UILaunchScreen` | 2026-09-23 杀 App 白屏事故（沿用） | 2026-09-23 |
 
-## 核心算法
-
-| # | Case | 防的是什么 | 加入日期 |
-|---|------|-----------|---------|
-| 4 | 卡尔曼恒速 5m/s×30s 收敛到 18km/h±4，距离 145m±30 | 速度/距离算法回归（速度恒 0 事故的算法层防线）；断言边界用真机同款 Swift 代码逐点标定，勿用脚本复刻值 | 2026-09-23 |
-| 5 | 静止（±0.3m 噪声）速度必须为 0、距离不得虚增 | 假速度/鬼里程；静止 5 分钟漂移事故的回归防线 | 2026-09-23 |
-| 12 | MET 分级边界：各速度档对应正确 MET，低速段千卡必须低于旧版 9.8 kcal/min 固定值 | 2026-09-28 千卡比系统体能高 80%：固定 9.8 kcal/min 不看速度不看体重 | 2026-09-28 |
-
-## 数据与兼容
+## 展示层数据契约（现行）
 
 | # | Case | 防的是什么 | 加入日期 |
 |---|------|-----------|---------|
-| 6 | 实时活动 ContentState JSON 编解码 round-trip | ActivityAttributes 结构改动破坏 App↔扩展契约 | 2026-09-23 |
-| 7 | CueSettings 旧存档（缺新字段）解码取默认值 | 设置加字段后老用户整体解码失败回默认 | 2026-09-23 |
-| 13 | 实时活动 ContentState 必须携带 heartRateStale 且可编码传输 | 2026-09-28 手表体能训练暂停后心率消失：实时活动侧需要同一份延迟标志才能置灰 | 2026-09-28 |
+| 29 | `RideItem(workout:)` 映射：24000 米 → 24 km，时长透传，千卡取整，均速 = 距离/有效时长 | 单位与算错导致整页数字错（米公里混用是这类事故的老根） | 2026-10-13 |
+| 30 | 演示数据形状固定：14 条、字段齐全、id 唯一、不引用真实健康训练 | 官网截图与演示依赖这批数据；引用真 workout 会让 -demoData 变成健康数据泄露口 | 2026-10-13 |
+| 31 | 演示数据总里程 = 301.1 km（±0.05） | 统计区总里程聚合回归；官网截图里的数字与它绑定 | 2026-10-13 |
 
 ## 流程级（smoke.sh 里的步骤）
 
 | # | 步骤 | 防的是什么 | 加入日期 |
 |---|------|-----------|---------|
 | 8 | xcodegen generate 每次先跑 | 改了 project.yml 忘了 regenerate，新文件没进工程 | 2026-09-23 |
-| 9 | 模拟器安装 + 启动后进程存活检查 | 启动闪退类回归（预热/后台拉起场景仍需真机观察） | 2026-09-23 |
-| 10 | -autoRide/-autoEnd 骑行生命周期 78 秒进程存活 | GO/结束/结算页链路闪退 | 2026-09-23 |
-| 11 | 正式发版前模拟器/真机确认双礼炮覆盖到上半屏、数字仍可读、动画结束无纸屑残留 | ConfettiSwiftUI 参数调整导致喷射方向错、范围太小或遮挡结算数据；视觉回归不能只靠单元测试 | 2026-09-23 |
-| 14 | 锁屏实时活动卡片内容不贴边、不被屏幕圆角/灵动岛遮挡（锁屏状态下目视检查） | 2026-09-28 用户反馈实时活动内容太靠边被屏幕盖住 | 2026-09-28 |
-| 15 | 手表体能训练暂停/恢复：咕咕保留末次心率并置灰，恢复后自动回实时（不再 15 秒就消失） | 2026-09-28 体能记录一暂停心率就没了 | 2026-09-28 |
-| 16 | 城市起停场景最高速不过度滞后（q=0.25；模拟合成加速段标定，匀速段收敛不受影响） | 2026-09-28 反馈最高速好像封顶 20：q=0.08 加速段滤波滞后太大 | 2026-09-28 |
+| 9 | 模拟器安装 + `-demoData` 启动后进程存活检查 | 启动闪退类回归 | 2026-09-23 |
+| 32 | `-demoData` 渲染成功后截图落盘 `/tmp/coucou-smoke-logpage.png` | 页面渲染不出来（白屏、崩溃后未退出）只有截图能看见，进程存活骗得过脚本 | 2026-10-13 |
+| 33 | 冒烟结束必须清场：terminate App；本次自己启动的模拟器顺手关掉 | 2026-10-13 用户反馈"一直在调用模拟器、打开 app 后一直调用定位，很不干净"：测试留下的常驻状态属于事故 | 2026-10-13 |
+
+## 已失效 case（保留追溯，勿删）
+
+| # | Case | 失效原因 | 原加入日期 |
+|---|------|---------|-----------|
+| 1 | `UIBackgroundModes: [location, audio]` | 定位与音频链路已删除 | 2026-09-23 |
+| 2 | Info.plist 四个权限文案 | 只保留健康读取一项，其余权限已删 | 2026-09-23 |
+| 3 | `coucouWidgets.appex` 必须嵌入 | 实时活动 Widget 已删除，断言反转为「不得嵌入 appex」（case 27） | 2026-09-23 |
+| 4 | 卡尔曼恒速收敛 | LocationRecorder 已删除，速度改由苹果健康/系统提供 | 2026-09-23 |
+| 5 | 卡尔曼静止不虚增距离 | 同上 | 2026-09-23 |
+| 6 | 实时活动 ContentState 编解码 | 实时活动已删除 | 2026-09-23 |
+| 7 | CueSettings 旧存档解码 | 播报设置全部删除，App 不再持久化任何设置 | 2026-09-23 |
+| 10 | -autoRide/-autoEnd 骑行生命周期 | 实时骑行链路已删除 | 2026-09-23 |
+| 11 | 双礼炮视觉回归 | 结算页与撒花已删除 | 2026-09-23 |
+| 12 | MET 分级千卡 | 千卡改由健康训练提供，App 不再自己算 | 2026-09-28 |
+| 13 | ContentState 携带 heartRateStale | 实时活动与实时心率已删除 | 2026-09-28 |
+| 14 | 锁屏实时活动卡片布局 | 实时活动已删除 | 2026-09-28 |
+| 15 | 手表暂停时心率置灰 | 实时心率已删除（历史心率仍在详情页只读展示） | 2026-09-28 |
+| 16 | 城市起停最高速不滞后 | 卡尔曼滤波已删除，最高速改从健康轨迹读 | 2026-09-28 |
+| 17 | 本机存档闭环（Documents/Rides JSON） | 本机记录链路已删除，数据只有健康一个来源 | 2026-09-30 |
+| 18 | 去健康断言（不声明 NSHealth*） | 反向变更：现在要读健康，见 case 25 | 2026-09-30 |
+| 19 | 结算页/详情页无心率项 | 结算页已删除；详情页重新引入历史心率只读展示 | 2026-09-30 |
+| 20 | 健康只读断言 | 保留并升级为 case 25 | 2026-09-30 |
+| 21 | 记录页合并视图（健康 + 本机） | 本机来源已删除，只剩健康 | 2026-09-30 |
+| 22 | 打开 App 不启动定位 | 定位链路整体删除，这条雷从根上不存在了 | 2026-10-13 |
+| 23 | 骑行中/补授权限后定位接管 | 同上 | 2026-10-13 |
+| 24 | 实时活动残影清理 | 实时活动已删除 | 2026-10-13 |
 
 ## 维护规则
 
 - 每次事故复盘后：修 bug 的同时在这里登记对应 case，并写进 SmokeTests.swift 或 smoke.sh
 - 断言边界必须实测标定（用真代码、真数据），禁止拍脑袋写宽松到永远通过的断言
 - Case 失效（需求变更导致）不删除，标注"已失效 + 原因"，留追溯
-
-## 2026-09-30 产品大简化（去心率、去健康写入、本地存档）
-
-- case 17 存档闭环：骑行 >60s 结束后 Documents/Rides/ 落一个 JSON，记录页可见、可删、可导出 Markdown（含轨迹每公里分段）
-- case 18 去健康断言：Info.plist 不再含 NSHealth*UsageDescription，工程不含 HealthKit 引用；App 全程不弹健康授权框
-- case 19 界面契约：结算页/详情页无心率项；骑行页大字为速度/距离/用时，辅助行含爬升
-
-## 2026-09-30 15:25 记录页改回健康只读
-
-- case 20 健康只读断言：Info.plist 有 NSHealthShareUsageDescription、无 NSHealthUpdateUsageDescription；HealthKitStore 无任何写入 API；requestAuthorization toShare 为空
-- case 21 记录页合并视图：手表写入健康的骑行训练与本机存档都出现在列表、总里程与柱状图
-
-## 2026-10-13 打开 App 不该碰定位（用户实测反馈“打开 app 后会一直调用定位”）
-
-- case 22 启动不定位：授权后普通打开 App（不进骑行），locationd 日志里不得出现 `subscribing to notification kCLConnectionMessageLocation` 与 `#sbim client arrow state changed` 的 0 -> 1（状态栏定位箭头必须不亮）。
-  - 根因：`locationManagerDidChangeAuthorization` 在设置 delegate（也就是 App 启动、RideEngine 初始化）时就会触发一次，旧代码无条件 `startUpdatingLocation()`，于是 App 一打开就常驻定位。
-  - 修法：`LocationRecorder` 加 `isRunning` 标志，只有 start() 之后才允许定位；授权回调里加 `guard isRunning, isAuthorized`。
-  - 验证方式（模拟器可复现，不用真机）：`xcrun simctl spawn <sim> log show --predicate 'process == "locationd" AND eventMessage CONTAINS "<bundle id>"'`，看箭头状态与订阅记录。注意：模拟器截图里状态栏**不会**画定位箭头，只能靠 locationd 日志判断。
-- case 23 骑行中/补授权限后定位必须正常接管：无权限状态下开骑，随后才授权，locationd 必须出现箭头 0 -> 1 与定位订阅（防止 case 22 的修法把正常链路一起挡掉）。
-- case 24 实时活动残影：`-autoRide -keepRiding` 后直接 terminate 进程（模拟崩溃/强杀），重新打开 App 必须清掉上一场的实时活动（主屏灵动岛不再显示骑行速度）。
-  - 根因：`RideLiveActivity.clearStale()` 只在开新骑行时调用，启动时没调，注释却写着“App 启动时上一场骑行必然已结束”。
-- 流程：smoke.sh 结束必须清场（terminate App；本次自己启动的模拟器顺手关掉），不留常驻定位与实时活动；`-autoRide` 默认 70 秒自动收尾，要长骑用 `-keepRiding`。

@@ -24,6 +24,14 @@ final class HealthKitStore {
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    /// 是否已经向用户请求过读取权限（用于设置页显示状态）
+    func hasRequestedRead() async -> Bool {
+        guard isAvailable else { return false }
+        let read: Set<HKObjectType> = [HKObjectType.workoutType()]
+        let status = try? await store.statusForAuthorizationRequest(toShare: [], read: read)
+        return status == .unnecessary
+    }
+
     /// 只请求读取权限，绝不写入
     func requestAuthorization() async throws {
         guard isAvailable else { return }

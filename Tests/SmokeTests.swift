@@ -1,49 +1,37 @@
 import XCTest
-import CoreLocation
+import HealthKit
 @testable import coucou
 
-/// 冒烟测试：工程完整性 + 核心算法正确性
-/// 存在的意义：2026-09-23 的 GO 闪退（Info.plist 丢失 UIBackgroundModes）
-/// 和装机失败（appex 缺 NSExtension）都是工程级回归，本文件负责在推送前拦住。
+/// 冒烟测试：工程完整性 + 展示层数据契约
+/// 产品在 2026-10-13 收敛为「只读苹果健康的骑行数据展示」，定位/播报/实时活动全部退场，
+/// 所以这里同时守着「不该有的东西不许回来」。
 final class SmokeTests: XCTestCase {
 
-    // MARK: - 工程完整性（两次事故的直接防线）
+    // MARK: - 工程完整性
 
-    func testAppInfoPlistHasBackgroundModes() throws {
+    func testAppInfoPlistDeclaresOnlyHealthRead() throws {
         let info = try requireAppInfo()
-        let modes = info["UIBackgroundModes"] as? [String] ?? []
-        XCTAssertTrue(modes.contains("location"),
-                      "UIBackgroundModes 缺 location：后台记录失效，GO 时开后台定位直接闪退")
-        XCTAssertTrue(modes.contains("audio"),
-                      "UIBackgroundModes 缺 audio：锁屏后语音播报会停")
-    }
-
-    func testAppInfoPlistKeyDeclarations() throws {
-        let info = try requireAppInfo()
-        XCTAssertEqual(info["NSSupportsLiveActivities"] as? Bool, true,
-                       "缺 NSSupportsLiveActivities：实时活动不会显示")
-        XCTAssertNotNil(info["UILaunchScreen"], "缺 UILaunchScreen：杀 App 会白屏")
-        for key in ["NSLocationWhenInUseUsageDescription",
-                    "NSHealthShareUsageDescription",
-                    "NSMotionUsageDescription"] {
-            let value = info[key] as? String
-            XCTAssertFalse(value?.isEmpty ?? true, "缺 \(key)")
-        }
+        let share = info["NSHealthShareUsageDescription"] as? String
+        XCTAssertFalse(share?.isEmpty ?? true, "缺 NSHealthShareUsageDescription：读不了骑行记录")
         XCTAssertNil(info["NSHealthUpdateUsageDescription"],
                      "咕咕只读健康，不应声明写入用途")
+        XCTAssertNil(info["NSLocationWhenInUseUsageDescription"],
+                     "定位链路已删除，不应再声明定位用途")
+        XCTAssertNil(info["NSMotionUsageDescription"],
+                     "计步器兜底已删除，不应再声明运动与健身用途")
+        XCTAssertNil(info["UIBackgroundModes"],
+                     "后台定位与音频已删除，不应再有后台模式")
+        XCTAssertNil(info["NSSupportsLiveActivities"],
+                     "实时活动已删除，不应再声明")
+        XCTAssertNotNil(info["UILaunchScreen"], "缺 UILaunchScreen：杀 App 会白屏")
     }
 
-    func testWidgetExtensionIsEmbeddedAndValid() throws {
-        let appex = Bundle.main.bundleURL.appendingPathComponent("PlugIns/coucouWidgets.appex")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: appex.path),
-                      "coucouWidgets.appex 未嵌入主 App：实时活动不可用")
-        let plistURL = appex.appendingPathComponent("Info.plist")
-        let data = try Data(contentsOf: plistURL)
-        let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any]
-        let ext = plist?["NSExtension"] as? [String: Any]
-        XCTAssertEqual(ext?["NSExtensionPointIdentifier"] as? String,
-                       "com.apple.widgetkit-extension",
-                       "appex 缺 NSExtension 字典：装机直接报错")
+    func testNoWidgetExtensionEmbedded() {
+        let appex = Bundle.main.bundleURL.appendingPathComponent("PlugIns")
+        let contents = (try? FileManager.default.contentsOfDirectory(atPath: appex.path)) ?? []
+        // 测试宿主的 PlugIns 里会有 coucouTests.xctest，只禁扩展
+        let extensions = contents.filter { $0.hasSuffix(".appex") }
+        XCTAssertTrue(extensions.isEmpty, "实时活动 Widget 已删除，不应再嵌入 appex：\(extensions)")
     }
 
     private func requireAppInfo() throws -> [String: Any] {
@@ -53,131 +41,39 @@ final class SmokeTests: XCTestCase {
         return info
     }
 
-    // MARK: - 卡尔曼测速（GPS 速度/距离的根基，边界用真机同款实现标定）
+    // MARK: - 展示层数据映射
 
-    /// 恒速 5 m/s（18 km/h）行驶 30 秒：速度应收敛，距离不得大幅偏差
-    func testKalmanConvergesOnConstantSpeed() {
-        let recorder = LocationRecorder()
-        let exp = expectation(description: "30 fixes processed")
-        var lastKmh = 0.0
-        var totalMeters = 0.0
-        var processed = 0
-        recorder.onLocation = { _, kmh, meters in
-            lastKmh = kmh
-            totalMeters += meters
-            processed += 1
-            if processed == 30 { exp.fulfill() }
-        }
-        var t = Date(timeIntervalSince1970: 1_000_000)
-        let manager = CLLocationManager()
-        for i in 0..<30 {
-            t = t.addingTimeInterval(1)
-            let loc = CLLocation(
-                coordinate: CLLocationCoordinate2D(latitude: 40.0 + Double(i) * 5.0 / 111_320.0, longitude: 116.0),
-                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: t)
-            recorder.locationManager(manager, didUpdateLocations: [loc])
-        }
-        wait(for: [exp], timeout: 5)
-        XCTAssertEqual(lastKmh, 18.0, accuracy: 4.0, "卡尔曼未能收敛到真实速度 18km/h")
-        XCTAssertEqual(totalMeters, 145.0, accuracy: 30.0, "距离积分偏差过大（30 秒 × 5m/s 应约 145m）")
+    /// 健康训练到展示项的映射：距离取米转公里、时长透传、均速按有效时长算
+    func testRideItemMappingFromWorkout() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let workout = HKWorkout(activityType: .cycling,
+                                start: start,
+                                end: start.addingTimeInterval(3600),
+                                duration: 3600,
+                                totalEnergyBurned: HKQuantity(unit: .kilocalorie(), doubleValue: 420),
+                                totalDistance: HKQuantity(unit: .meter(), doubleValue: 24_000),
+                                metadata: nil)
+        let item = RideItem(workout: workout)
+        XCTAssertEqual(item.distanceKm, 24, accuracy: 0.001, "24000 米应映射为 24 公里")
+        XCTAssertEqual(item.duration, 3600)
+        XCTAssertEqual(item.calories, 420)
+        XCTAssertEqual(item.avgSpeedKmh, 24, accuracy: 0.001, "24 公里 1 小时 = 24 km/h")
+        XCTAssertEqual(item.date, start)
     }
 
-    /// 原地不动（±0.3m 噪声）：不得出现假速度，距离不得虚增
-    func testKalmanReportsZeroWhenStationary() {
-        let recorder = LocationRecorder()
-        let exp = expectation(description: "20 fixes processed")
-        var falseSpeedSeen = false
-        var totalMeters = 0.0
-        var processed = 0
-        recorder.onLocation = { _, kmh, meters in
-            if kmh > 0 { falseSpeedSeen = true }
-            totalMeters += meters
-            processed += 1
-            if processed == 20 { exp.fulfill() }
-        }
-        var t = Date(timeIntervalSince1970: 1_000_000)
-        let manager = CLLocationManager()
-        for i in 0..<20 {
-            t = t.addingTimeInterval(1)
-            let lat = 40.0 + Double.random(in: -0.3...0.3) / 111_320.0
-            let loc = CLLocation(
-                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: 116.0),
-                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: t)
-            recorder.locationManager(manager, didUpdateLocations: [loc])
-        }
-        wait(for: [exp], timeout: 5)
-        XCTAssertFalse(falseSpeedSeen, "静止时出现了假速度")
-        XCTAssertEqual(totalMeters, 0, accuracy: 1.0, "静止时距离虚增")
+    /// 演示数据必须可控：条数固定、按时间倒序无关（由展示层排序）、字段齐全
+    func testDemoDataShape() {
+        let items = DemoData.items()
+        XCTAssertEqual(items.count, 14, "官网截图依赖这批固定演示数据")
+        XCTAssertTrue(items.allSatisfy { $0.distanceKm > 0 && $0.duration > 0 }, "演示数据缺字段")
+        XCTAssertTrue(items.allSatisfy { $0.workout == nil }, "演示数据不应引用真实健康训练")
+        XCTAssertEqual(Set(items.map(\.id)).count, items.count, "演示数据 id 必须唯一")
     }
 
-    // MARK: - 实时活动数据结构
-
-    func testRideActivityContentStateCodable() throws {
-        let state = RideActivityAttributes.ContentState(
-            speedKmh: 23.4, distanceKm: 12.48, elapsed: 2452, paused: false)
-        let data = try JSONEncoder().encode(state)
-        let decoded = try JSONDecoder().decode(RideActivityAttributes.ContentState.self, from: data)
-        XCTAssertEqual(decoded.speedKmh, 23.4)
-        XCTAssertEqual(decoded.distanceKm, 12.48)
-        XCTAssertEqual(decoded.elapsed, 2452)
-        XCTAssertFalse(decoded.paused)
-    }
-
-    // MARK: - 本地骑行存档
-
-    /// 存档→读回→每公里分段与测距，决定记录页与导出的正确性
-    func testRideRecordArchiveRoundtrip() throws {
-        let start = Date(timeIntervalSince1970: 1_000_000)
-        var route: [RideRecord.RidePoint] = []
-        // 沿经线骑 2.2km（每点 100m）
-        for i in 0...22 {
-            route.append(.init(t: Double(i) * 20,
-                               lat: 40.0 + Double(i) * 100.0 / 111_320.0,
-                               lon: 116.0, ele: 10 + Double(i)))
-        }
-        let rec = RideRecord(startDate: start, duration: 440,
-                             distanceKm: 2.2, avgSpeedKmh: 18, maxSpeedKmh: 21,
-                             calories: 120, elevationGainM: 22,
-                             cues: [CueEvent(id: UUID(), date: start, text: "测试", kind: .kmSplit)],
-                             route: route)
-        RideArchive.save(rec)
-        defer { RideArchive.delete(rec) }
-        let all = RideArchive.loadAll()
-        guard let loaded = all.first(where: { $0.id == rec.id }) else {
-            return XCTFail("存档后读不回记录")
-        }
-        XCTAssertEqual(loaded.distanceKm, 2.2, accuracy: 0.001)
-        XCTAssertEqual(loaded.route.count, 23)
-        XCTAssertEqual(loaded.splits.count, 2, "2.2km 应有 2 个整公里分段")
-        XCTAssertGreaterThan(loaded.splits[0].seconds, 0)
-        // 分段用时合理性：100m/20s = 18km/h → 每公里约 200s
-        XCTAssertEqual(loaded.splits[0].seconds, 200, accuracy: 30)
-    }
-
-    // MARK: - 千卡 MET 分级
-
-    /// MET 分级边界：休闲/中速/竞速各档，且千卡积分应远低于旧版 9.8 kcal/min 固定值
-    func testMetGradingBySpeed() {
-        XCTAssertEqual(RideEngine.met(forKmh: 12), 4.0)
-        XCTAssertEqual(RideEngine.met(forKmh: 16.5), 6.8)
-        XCTAssertEqual(RideEngine.met(forKmh: 20), 8.0)
-        XCTAssertEqual(RideEngine.met(forKmh: 24), 10.0)
-        XCTAssertEqual(RideEngine.met(forKmh: 28), 12.0)
-        XCTAssertEqual(RideEngine.met(forKmh: 35), 15.8)
-        // 70kg 休闲骑（14km/h）一小时：4 MET × 3.5 × 70 / 200 ≈ 294 千卡；旧算法 9.8×60=588，正好高出约一倍
-        // 90 分钟 20km/h：8 MET × 3.5 × 70 / 200 ≈ 9.8 kcal/min —— 同速同重才等价，速度低时必须更低
-        let kcalLow = RideEngine.met(forKmh: 14) * 3.5 * 70 / 200 * 60
-        XCTAssertLessThan(kcalLow, 9.8 * 60,
-                          "低速骑行千卡必须低于旧版固定 9.8 kcal/min，否则永远比系统体能偏高")
-    }
-
-    // MARK: - 设置解码兼容旧存档
-
-    func testCueSettingsDecodesLegacyArchiveWithoutNewFields() throws {
-        let legacy = #"{"perKilometer": true, "hrZoneAlert": true}"#.data(using: .utf8)!
-        let settings = try JSONDecoder().decode(CueSettings.self, from: legacy)
-        XCTAssertTrue(settings.autoPause, "旧存档缺新字段时应取默认值，不能整体解码失败")
-        XCTAssertTrue(settings.emotionalValue)
-        XCTAssertTrue(settings.keepScreenOn)
+    /// 统计区依赖的距离序列：总里程是所有场次之和
+    func testTotalDistanceAggregation() {
+        let items = DemoData.items()
+        let total = items.reduce(0) { $0 + $1.distanceKm }
+        XCTAssertEqual(total, 301.1, accuracy: 0.05, "官网截图里总里程为 301.1 km")
     }
 }

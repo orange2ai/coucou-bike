@@ -23,20 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>咕咕骑车读取苹果健康中的骑行训练（手表写入的也算），用于展示历史记录与导出。只读，不写入。</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>咕咕骑车使用定位获取骑行速度、距离和轨迹，仅用于你的骑行记录。</string>
-	<key>NSMotionUsageDescription</key>
-	<string>咕咕骑车使用运动与健身数据提升骑行速度的计算精度。</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
-	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-		<string>audio</string>
-	</array>
+	<string>咕咕骑车读取苹果健康中的骑行训练（手表写入的也算），用于展示骑行数据与导出。只读，不写入。</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>

@@ -21,20 +21,6 @@
                ReferencedContainer = "container:coucou.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A65664900542BD3FC9ADB1B6"
-               BuildableName = "coucouWidgets.appex"
-               BlueprintName = "coucouWidgets"
-               ReferencedContainer = "container:coucou.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
