@@ -120,6 +120,41 @@ final class SmokeTests: XCTestCase {
         XCTAssertEqual(streak.longest, 3)
     }
 
+    // MARK: - 页面结构
+
+    /// 两个 tab 的直达参数：截图与冒烟靠在启动时指定落到哪个 tab
+    func testStartTabArgumentParsing() {
+        XCTAssertEqual(LaunchOptions.startTab(from: []), 0)
+        XCTAssertEqual(LaunchOptions.startTab(from: ["coucou", "-demoData"]), 0)
+        XCTAssertEqual(LaunchOptions.startTab(from: ["coucou", "-startTab", "1"]), 1)
+        XCTAssertEqual(LaunchOptions.startTab(from: ["coucou", "-startTab", "9"]), 0, "越界要回落到第一个 tab")
+        XCTAssertEqual(LaunchOptions.startTab(from: ["coucou", "-startTab"]), 0, "参数没跟上要给默认值")
+    }
+
+    /// 对比卡要能一眼看出涨还是跌：涨是正的、百分比同向
+    func testComparisonDeltaDirection() {
+        let cal = Calendar.current
+        let now = Date()
+        let thisWeek = cal.dateInterval(of: .weekOfYear, for: now)!.start
+        let lastWeek = cal.date(byAdding: .weekOfYear, value: -1, to: thisWeek)!
+
+        let up = [
+            RideItem(id: "this", date: thisWeek.addingTimeInterval(3600), distanceKm: 30, duration: 3600),
+            RideItem(id: "last", date: lastWeek.addingTimeInterval(3600), distanceKm: 20, duration: 3600),
+        ]
+        let risen = RideInsights(items: up).comparisons(now: now).first { $0.title == "本周" }
+        XCTAssertEqual(risen?.delta ?? 0, 10, accuracy: 0.001)
+        XCTAssertEqual(risen?.percent, 50, "20 涨到 30 是 +50%")
+
+        let down = [
+            RideItem(id: "this", date: thisWeek.addingTimeInterval(3600), distanceKm: 10, duration: 3600),
+            RideItem(id: "last", date: lastWeek.addingTimeInterval(3600), distanceKm: 25, duration: 3600),
+        ]
+        let fallen = RideInsights(items: down).comparisons(now: now).first { $0.title == "本周" }
+        XCTAssertEqual(fallen?.delta ?? 0, -15, accuracy: 0.001)
+        XCTAssertEqual(fallen?.percent, -60)
+    }
+
     /// 个人纪录四项齐全，且最长单次取的是演示数据里的最大值
     func testRecordsShape() {
         let records = RideInsights(items: DemoData.items()).records()

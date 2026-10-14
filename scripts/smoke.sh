@@ -7,7 +7,7 @@
 #   3. 单元测试（工程完整性 + 展示层数据契约）
 #   4. 装机产物 Info.plist 契约（只有健康只读，定位/后台/实时活动不许回来）+ 无 appex
 #   5. 模拟器安装 + 启动存活
-#   6. -demoData 渲染存活（官网截图依赖的演示数据链路）
+#   6. -demoData 渲染存活（两个 tab 各截一张，官网截图依赖的演示数据链路）
 #
 # 紧急跳过：COUCOU_SKIP_SMOKE=1 git push（原因必须写进提交信息）
 set -euo pipefail
@@ -86,12 +86,23 @@ ALIVE=$(xcrun simctl spawn "$SIM_ID" launchctl list 2>/dev/null | grep -c "ai.ma
 [ "$ALIVE" -ge 1 ] || fail "启动后进程消失（闪退）"
 echo "启动存活 ✓"
 
-step "演示数据渲染（-demoData，不弹健康授权）"
+step "骑行数据页渲染（-demoData -startTab 0，不弹健康授权）"
 xcrun simctl spawn "$SIM_ID" log show --last 20s --predicate 'eventMessage CONTAINS "NSHealth"' > /dev/null 2>&1 || true
-SHOT=/tmp/coucou-smoke-logpage.png
+SHOT=/tmp/coucou-smoke-data.png
 xcrun simctl io "$SIM_ID" screenshot "$SHOT" > /dev/null 2>&1 || true
-[ -s "$SHOT" ] || fail "记录页截图失败（页面可能没渲染出来）"
-echo "记录页渲染 ✓（截图 $SHOT，可人工看一眼）"
+[ -s "$SHOT" ] || fail "骑行数据页截图失败（页面可能没渲染出来）"
+echo "骑行数据页渲染 ✓（截图 $SHOT，可人工看一眼）"
+
+step "个人纪录页渲染（-startTab 1）"
+xcrun simctl terminate "$SIM_ID" ai.marswave.coucou > /dev/null 2>&1 || true
+xcrun simctl launch "$SIM_ID" ai.marswave.coucou -demoData -startTab 1 > /dev/null
+sleep 6
+ALIVE2=$(xcrun simctl spawn "$SIM_ID" launchctl list 2>/dev/null | grep -c "ai.marswave.coucou" || true)
+[ "$ALIVE2" -ge 1 ] || fail "个人纪录页启动后进程消失（闪退）"
+SHOT2=/tmp/coucou-smoke-records.png
+xcrun simctl io "$SIM_ID" screenshot "$SHOT2" > /dev/null 2>&1 || true
+[ -s "$SHOT2" ] || fail "个人纪录页截图失败"
+echo "个人纪录页渲染 ✓（截图 $SHOT2，可人工看一眼）"
 
 cleanup
 trap - EXIT

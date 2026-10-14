@@ -3,13 +3,15 @@ import CoreLocation
 import HealthKit
 import UIKit
 
-/// 记录页（App 首页）：顶部统计区（总里程 + 里程柱状图 + 骑行日历），下面是骑行历史
+/// 骑行数据页（第一个 tab）：只负责忠实记录。
+/// 总里程与保养、里程柱状图、骑行日历，下面是每一次骑行的历史。
 /// 数据源：苹果健康里的骑行训练，只读
-struct LogView: View {
-    @State private var items: [RideItem] = []
+struct RideDataView: View {
+    let items: [RideItem]
+    let loading: Bool
+
     @State private var shareItems: [Any] = []
     @State private var exporting = false
-    @State private var loading = false
 
     private var statRides: [(date: Date, km: Double)] {
         items.map { ($0.date, $0.distanceKm) }
@@ -20,15 +22,25 @@ struct LogView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if !items.isEmpty {
-                        RideGrowthView(items: items)
+                        RideTotalCard(insights: RideInsights(items: items))
                         RideStatsView(rides: statRides)
-                    }
 
-                    Text("骑行历史")
-                        .font(.headline)
-                        .padding(.top, 6)
+                        Text("骑行历史")
+                            .font(.headline)
+                            .padding(.top, 6)
 
-                    if loading {
+                        ForEach(items) { item in
+                            NavigationLink(value: item) { card(item) }
+                                .buttonStyle(.plain)
+                        }
+
+                        Text("导出")
+                            .font(.headline)
+                            .padding(.top, 10)
+                        Text("每条记录右上角的分享按钮，可以把这条骑行连同心率与轨迹导出成 Markdown。")
+                            .font(.caption)
+                            .foregroundStyle(.gray)
+                    } else if loading {
                         HStack(spacing: 8) {
                             ProgressView()
                             Text("正在读取苹果健康…")
@@ -36,29 +48,17 @@ struct LogView: View {
                         .font(.footnote)
                         .foregroundStyle(.gray)
                         .padding(.top, 8)
-                    } else if items.isEmpty {
+                    } else {
                         Text("暂无骑行记录。手表或 iPhone 记录的骑行训练会出现在这里。")
                             .font(.footnote)
                             .foregroundStyle(.gray)
                             .padding(.top, 8)
-                    } else {
-                        ForEach(items) { item in
-                            NavigationLink(value: item) { card(item) }
-                                .buttonStyle(.plain)
-                        }
                     }
-
-                    Text("导出")
-                        .font(.headline)
-                        .padding(.top, 10)
-                    Text("每条记录右上角的分享按钮，可以把这条骑行连同心率与轨迹导出成 Markdown。")
-                        .font(.caption)
-                        .foregroundStyle(.gray)
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
             }
-            .navigationTitle("记录")
+            .navigationTitle("骑行数据")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { SettingsView() } label: {
@@ -73,7 +73,6 @@ struct LogView: View {
                                         set: { if !$0 { shareItems = [] } })) {
                 ShareSheet(items: shareItems)
             }
-            .task { await load() }
         }
     }
 
@@ -126,18 +125,6 @@ struct LogView: View {
     }
 
     // MARK: - 加载与导出
-
-    private func load() async {
-        loading = true
-        if DemoData.isEnabled {
-            // 截图/演示模式不弹健康授权，演示数据只在内存里
-            items = DemoData.items()
-        } else {
-            try? await HealthKitStore.shared.requestAuthorization()
-            items = await HealthKitStore.shared.recentWorkouts().map(RideItem.init)
-        }
-        loading = false
-    }
 
     private func export(_ workout: HKWorkout, startDate: Date) {
         exporting = true
@@ -237,6 +224,72 @@ struct LogView: View {
                                     t.string(from: loc.timestamp), loc.coordinate.latitude,
                                     loc.coordinate.longitude, loc.altitude))
             }
+        }
+    }
+}
+
+/// 总里程与保养进度：回答「一共骑了多远、离下一次保养还有多远」
+private struct RideTotalCard: View {
+    let insights: RideInsights
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("总里程")
+                    .font(.subheadline).bold()
+                Spacer()
+                Text(String(format: "%.1f km", insights.totalKm))
+                    .font(.system(size: 40, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.orange)
+                    .contentTransition(.numericText())
+            }
+
+            HStack(alignment: .top) {
+                miniStat("次数", "\(insights.rideCount) 次")
+                Spacer()
+                miniStat("时长", insights.totalDurationText)
+                Spacer()
+                miniStat("消耗", insights.totalCaloriesText)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color(white: 0.12))
+                        Capsule().fill(Color.orange)
+                            .frame(width: max(8, geo.size.width * min(1, insights.serviceProgress)))
+                            .animation(.easeOut(duration: 0.4), value: insights.serviceProgress)
+                    }
+                }
+                .frame(height: 8)
+
+                HStack {
+                    Text("\(Int(insights.nextServiceKm)) km 保养")
+                        .font(.caption2)
+                        .foregroundStyle(Color(white: 0.5))
+                    Spacer()
+                    Text(String(format: "还剩 %.0f km", insights.remainingKm))
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(insights.remainingKm < 50 ? Color.orange : Color(white: 0.55))
+                }
+            }
+        }
+        .padding(14)
+        .background(Color(white: 0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func miniStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(Color(white: 0.45))
+            Text(value)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
         }
     }
 }

@@ -42,6 +42,19 @@ struct RideItem: Identifiable, Hashable {
     func hash(into h: inout Hasher) { h.combine(id) }
 }
 
+/// 启动参数：截图与冒烟需要直达某个 tab（-startTab 1 落到个人纪录）
+enum LaunchOptions {
+    static var startTab: Int { startTab(from: ProcessInfo.processInfo.arguments) }
+
+    static func startTab(from arguments: [String]) -> Int {
+        guard let i = arguments.firstIndex(of: "-startTab"),
+              i + 1 < arguments.count,
+              let value = Int(arguments[i + 1]), (0...1).contains(value)
+        else { return 0 }
+        return value
+    }
+}
+
 /// 截图与演示用：-demoData 启动时造一批虚构骑行。
 /// 只存在于内存，不写健康、不写磁盘。
 enum DemoData {

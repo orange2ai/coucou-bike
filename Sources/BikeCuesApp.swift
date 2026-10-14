@@ -4,7 +4,7 @@ import SwiftUI
 struct BikeCuesApp: App {
     var body: some Scene {
         WindowGroup {
-            LogView()
+            RootTabView()
                 .preferredColorScheme(.dark)
         }
     }
