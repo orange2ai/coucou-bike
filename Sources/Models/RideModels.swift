@@ -10,6 +10,8 @@ struct RideItem: Identifiable, Hashable {
     var duration: TimeInterval
     var calories: Int?
     var source: String?
+    /// 写入方的 bundle id：用来识别旧版咕咕与第三方写入的数据
+    var sourceBundleID: String?
     /// 健康训练本体：详情页据此读取心率与轨迹；演示数据为 nil
     var workout: HKWorkout?
 
@@ -20,17 +22,32 @@ struct RideItem: Identifiable, Hashable {
         self.duration = workout.duration
         self.calories = workout.totalEnergyBurned.map { Int($0.doubleValue(for: .kilocalorie())) }
         self.source = workout.sourceRevision.source.name
+        self.sourceBundleID = workout.sourceRevision.source.bundleIdentifier
         self.workout = workout
     }
 
-    init(id: String, date: Date, distanceKm: Double, duration: TimeInterval, calories: Int? = nil, source: String? = nil) {
+    init(id: String, date: Date, distanceKm: Double, duration: TimeInterval, calories: Int? = nil, source: String? = nil, sourceBundleID: String? = nil) {
         self.id = id
         self.date = date
         self.distanceKm = distanceKm
         self.duration = duration
         self.calories = calories
         self.source = source
+        self.sourceBundleID = sourceBundleID
         self.workout = nil
+    }
+
+    /// 非系统写入的记录：旧版咕咕或第三方 App 写进健康的，数据质量不可控，
+    /// 最佳成绩不参与计算，列表里单独标出来提醒用户可以清理
+    var isLegacySource: Bool {
+        guard let bundle = sourceBundleID else { return false }
+        return !bundle.hasPrefix("com.apple.health")
+    }
+
+    /// 标记文案：旧版咕咕写得明明白白，其它第三方写来源名
+    var legacyBadge: String? {
+        guard isLegacySource else { return nil }
+        return sourceBundleID == "coucou" ? "旧版咕咕写入" : "\(source ?? "第三方")写入"
     }
 
     /// 均速：距离 / 有效时长

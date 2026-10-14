@@ -29,7 +29,18 @@ struct RideDataView: View {
                             .font(.headline)
                             .padding(.top, 6)
 
-                        ForEach(items) { item in
+                        let legacy = items.filter(\.isLegacySource)
+                        let system = items.filter { !$0.isLegacySource }
+                        if !legacy.isEmpty {
+                            Text("这些是旧版咕咕或第三方写进健康的记录，最佳成绩不拿它们计算。咕咕没有权限替你删：设置 → 健康 → 数据访问与设备 里可以删除它们写入的全部数据。")
+                                .font(.caption)
+                                .foregroundStyle(Color(white: 0.55))
+                            ForEach(legacy) { item in
+                                NavigationLink(value: item) { card(item) }
+                                    .buttonStyle(.plain)
+                            }
+                        }
+                        ForEach(system) { item in
                             NavigationLink(value: item) { card(item) }
                                 .buttonStyle(.plain)
                         }
@@ -59,6 +70,7 @@ struct RideDataView: View {
                 .padding(.vertical, 10)
             }
             .navigationTitle("骑行数据")
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { SettingsView() } label: {
@@ -97,6 +109,15 @@ struct RideDataView: View {
             }
             .font(.caption)
             .foregroundStyle(.gray)
+            if let badge = item.legacyBadge {
+                Text(badge)
+                    .font(.caption2).bold()
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.16))
+                    .clipShape(Capsule())
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

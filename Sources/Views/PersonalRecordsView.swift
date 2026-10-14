@@ -36,6 +36,7 @@ struct PersonalRecordsView: View {
                 .padding(.vertical, 10)
             }
             .navigationTitle("个人纪录")
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { SettingsView() } label: {

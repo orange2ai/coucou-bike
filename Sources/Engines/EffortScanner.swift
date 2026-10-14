@@ -9,7 +9,8 @@ enum EffortScanner {
         var fiveKm: BestEffort?
     }
 
-    private static let cacheVersion = 1
+    /// v3：只认系统来源（com.apple.health.*），旧版咕咕与第三方写的距离不再参与
+    private static let cacheVersion = 3
 
     private struct CacheEntry: Codable {
         var oneKmSpeed: Double?
@@ -35,7 +36,8 @@ enum EffortScanner {
         for item in items {
             guard let workout = item.workout,
                   cache[item.id] == nil,
-                  item.distanceKm >= 1
+                  item.distanceKm >= 1,
+                  workout.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple.health")
             else { continue }
             if Task.isCancelled { break }
 

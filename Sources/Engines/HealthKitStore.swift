@@ -96,25 +96,26 @@ final class HealthKitStore {
     // MARK: - 最佳一段
 
     /// 某次训练的距离累计序列（时间升序、累计米），用来算最快的一段
-    /// 优先用健康里记录的距离采样（手表/手机在训练期间写入，够密），采样太稀才回退到 GPS 轨迹
+    /// 只认系统来源（手表与 iPhone 自带体能训练）；序列太稀或没有时回退 GPS 轨迹，再没有就返回空，不算不编
     func distanceSeries(for workout: HKWorkout) async -> [(date: Date, meters: Double)] {
-        let samples = await distanceSamples(for: workout)
-        if samples.count >= 10 { return samples }
+        let raw = await distanceSamples(for: workout)
+        let series = BestEfforts.series(from: raw)
+        if series.count >= 10 { return series }
         return Self.cumulative(from: await routeLocations(for: workout))
     }
 
-    private func distanceSamples(for workout: HKWorkout) async -> [(date: Date, meters: Double)] {
+    /// 某次训练期间健康里的距离采样原样：来源、结束时间、该段增量（米）
+    private func distanceSamples(for workout: HKWorkout) async -> [(source: String, date: Date, meters: Double)] {
         guard isAvailable else { return [] }
         let type = HKQuantityType(.distanceCycling)
         let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate)
         return await withCheckedContinuation { cont in
             let q = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit,
-                                  sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, _ in
-                var total = 0.0
-                var out: [(Date, Double)] = []
-                for s in (samples as? [HKQuantitySample]) ?? [] {
-                    total += s.quantity.doubleValue(for: .meter())
-                    out.append((s.endDate, total))
+                                  sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)]) { _, samples, _ in
+                let out = ((samples as? [HKQuantitySample]) ?? []).map { s in
+                    (s.sourceRevision.source.bundleIdentifier,
+                     s.endDate,
+                     s.quantity.doubleValue(for: .meter()))
                 }
                 cont.resume(returning: out)
             }

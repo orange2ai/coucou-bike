@@ -169,6 +169,34 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(HealthKitStore.cumulative(from: [route[0]]).isEmpty, "一个点算不出距离")
     }
 
+    /// 同一趙骑行手表和第三方 App 各写一遍距离时只认一个来源，混加会把速度翻倍
+    func testSeriesIgnoresDuplicateSources() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        // 两个来源各写 10 段、每段 100 米，时间交错：混加会变成每秒 200 米
+        var raw: [(source: String, date: Date, meters: Double)] = []
+        for i in 0..<10 {
+            let t = start.addingTimeInterval(Double(i + 1) * 10)
+            raw.append(("com.apple.health.watch", t, 100))
+            raw.append(("coucou", t.addingTimeInterval(0.5), 100))
+        }
+        let series = BestEfforts.series(from: raw)
+        XCTAssertEqual(series.last?.meters ?? -1, 1000, "第三方写的距离不参与，只累计系统来源的增量")
+        XCTAssertNil(BestEfforts.best(in: series, windowKm: 5), "总距离只有 1 公里，不能出 5 公里纪录")
+    }
+
+    /// 多个来源时取累计距离最大的那个（覆盖最完整）
+    func testSeriesPicksLargestSource() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        var raw: [(source: String, date: Date, meters: Double)] = []
+        for i in 0..<10 {
+            let t = start.addingTimeInterval(Double(i + 1) * 10)
+            raw.append(("com.apple.health.watch", t, 120))
+            raw.append(("com.apple.health.iphone", t.addingTimeInterval(0.5), 30))
+        }
+        let series = BestEfforts.series(from: raw)
+        XCTAssertEqual(series.last?.meters ?? -1, 1200, "取覆盖最完整的手表来源，不是两者相加")
+    }
+
     /// 演示数据的最佳成绩要有合理层级：1 公里比 5 公里快，两个都大于 0
     func testDemoEffortsAreSane() {
         let bests = EffortScanner.demoBests()
