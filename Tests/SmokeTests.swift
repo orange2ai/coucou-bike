@@ -76,4 +76,55 @@ final class SmokeTests: XCTestCase {
         let total = items.reduce(0) { $0 + $1.distanceKm }
         XCTAssertEqual(total, 301.1, accuracy: 0.05, "官网截图里总里程为 301.1 km")
     }
+
+    // MARK: - 成长口径
+
+    /// 上期没有数据时不能算百分比，界面也就不可能出现 NaN / ∞
+    func testComparisonWithoutPreviousPeriod() {
+        let now = Date()
+        let weekStart = Calendar.current.dateInterval(of: .weekOfYear, for: now)!.start
+        let items = [RideItem(id: "a", date: weekStart.addingTimeInterval(3600),
+                              distanceKm: 10, duration: 1800, calories: 120)]
+        let week = RideInsights(items: items).comparisons(now: now).first { $0.title == "本周" }
+        XCTAssertEqual(week?.km ?? 0, 10, accuracy: 0.001)
+        XCTAssertEqual(week?.previousKm ?? -1, 0, accuracy: 0.001)
+        XCTAssertNil(week?.percent, "上期为 0 时百分比必须是 nil")
+    }
+
+    /// 去年同期只算到今天的同等进度，不能把去年年底的里程也算进来
+    func testLastYearComparisonUsesSamePeriod() {
+        let cal = Calendar.current
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: 12))!
+        let inPeriod = cal.date(from: DateComponents(year: 2025, month: 3, day: 1, hour: 9))!
+        let afterPeriod = cal.date(from: DateComponents(year: 2025, month: 12, day: 1, hour: 9))!
+        let items = [
+            RideItem(id: "p", date: inPeriod, distanceKm: 20, duration: 3600),
+            RideItem(id: "q", date: afterPeriod, distanceKm: 99, duration: 3600),
+        ]
+        let year = RideInsights(items: items).comparisons(now: now).first { $0.title == "今年" }
+        XCTAssertEqual(year?.previousKm ?? -1, 20, accuracy: 0.001)
+    }
+
+    /// 连续周数：本周往前连着三周，再往前空一周
+    func testStreakCountsConsecutiveWeeks() {
+        let cal = Calendar.current
+        let thisWeek = cal.dateInterval(of: .weekOfYear, for: Date())!.start
+        let offsets = [0, -7, -14, -28]
+        let items = offsets.enumerated().compactMap { index, days -> RideItem? in
+            guard let day = cal.date(byAdding: .day, value: days, to: thisWeek) else { return nil }
+            return RideItem(id: "w\(index)", date: day.addingTimeInterval(3600),
+                            distanceKm: 10, duration: 1800)
+        }
+        let streak = RideInsights(items: items).streak
+        XCTAssertEqual(streak.current, 3, "本周、上周、上上周连着，再往前断了")
+        XCTAssertEqual(streak.longest, 3)
+    }
+
+    /// 个人纪录四项齐全，且最长单次取的是演示数据里的最大值
+    func testRecordsShape() {
+        let records = RideInsights(items: DemoData.items()).records()
+        XCTAssertEqual(records.map(\.label), ["最长单次", "最快均速", "最长单次用时", "单月最多"])
+        XCTAssertEqual(records.first?.value, "35.6 km")
+        XCTAssertTrue(records.allSatisfy { !$0.detail.isEmpty }, "纪录必须带日期")
+    }
 }

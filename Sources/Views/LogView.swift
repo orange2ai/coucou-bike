@@ -19,7 +19,10 @@ struct LogView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    RideStatsView(rides: statRides)
+                    if !items.isEmpty {
+                        RideGrowthView(items: items)
+                        RideStatsView(rides: statRides)
+                    }
 
                     Text("骑行历史")
                         .font(.headline)

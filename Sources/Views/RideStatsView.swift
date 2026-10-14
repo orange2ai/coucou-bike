@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-/// 记录页顶部统计区：总里程（保养进度）+ 日/周/月里程柱状图
+/// 记录页统计区：日/周/月里程柱状图 + 骑行日历热力图
 struct RideStatsView: View {
     /// 健康训练与本地记录合并后的 (日期, 公里) 列表
     let rides: [(date: Date, km: Double)]
@@ -16,59 +16,11 @@ struct RideStatsView: View {
     @State private var bucket: Bucket = .day
     @State private var selected: (date: Date, km: Double)?
 
-    private var totalKm: Double { rides.reduce(0) { $0 + $1.km } }
-    private var serviceInterval: Double { 1000 }
-    private var nextServiceKm: Double { (floor(totalKm / serviceInterval) + 1) * serviceInterval }
-    private var remainingKm: Double { max(0, nextServiceKm - totalKm) }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            odometerCard
             chartCard
             heatmapCard
         }
-    }
-
-    // MARK: - 总里程 / 保养
-
-    private var odometerCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("总里程")
-                    .font(.subheadline).bold()
-                Spacer()
-                Text(String(format: "%.1f km", totalKm))
-                    .font(.system(size: 40, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.orange)
-                    .contentTransition(.numericText())
-            }
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color(white: 0.12))
-                    let progress = min(1, (totalKm.truncatingRemainder(dividingBy: serviceInterval)) / serviceInterval)
-                    Capsule().fill(Color.orange)
-                        .frame(width: max(8, geo.size.width * progress))
-                        .animation(.easeOut(duration: 0.4), value: progress)
-                }
-            }
-            .frame(height: 8)
-
-            HStack {
-                Text("\(Int(nextServiceKm)) km 保养")
-                    .font(.caption2)
-                    .foregroundStyle(.gray)
-                Spacer()
-                Text(remainingKm < 0.5 ? "该保养了" : String(format: "还剩 %.0f km", remainingKm))
-                    .font(.caption2)
-                    .monospacedDigit()
-                    .foregroundStyle(remainingKm < 50 ? Color.orange : Color(white: 0.55))
-            }
-        }
-        .padding(14)
-        .background(Color(white: 0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - 柱状图
