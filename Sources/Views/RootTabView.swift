@@ -6,6 +6,8 @@ struct RootTabView: View {
     @State private var tab: Int = LaunchOptions.startTab
     @State private var items: [RideItem] = []
     @State private var inFlight = false
+    @State private var bests = EffortScanner.Bests()
+    @State private var scanning = false
 
     /// 首次读取中才显示加载态，切 tab 刷新时不闪
     private var loading: Bool { items.isEmpty && inFlight }
@@ -16,7 +18,7 @@ struct RootTabView: View {
                 .tabItem { Label("骑行数据", systemImage: "chart.bar.fill") }
                 .tag(0)
 
-            PersonalRecordsView(items: items, loading: loading)
+            PersonalRecordsView(items: items, loading: loading, bests: bests, scanning: scanning)
                 .tabItem { Label("个人纪录", systemImage: "trophy.fill") }
                 .tag(1)
         }
@@ -34,9 +36,15 @@ struct RootTabView: View {
         if DemoData.isEnabled {
             // 截图与冒烟模式：不弹健康授权，演示数据只在内存里
             items = DemoData.items()
-            return
+        } else {
+            try? await HealthKitStore.shared.requestAuthorization()
+            items = await HealthKitStore.shared.recentWorkouts().map(RideItem.init)
         }
-        try? await HealthKitStore.shared.requestAuthorization()
-        items = await HealthKitStore.shared.recentWorkouts().map(RideItem.init)
+
+        guard !items.isEmpty else { return }
+        scanning = true
+        defer { scanning = false }
+        // 最快 1 公里与 5 公里要翻每趟骑行的距离序列，算完一趟亮一次
+        bests = await EffortScanner.scan(items) { bests = $0 }
     }
 }

@@ -5,6 +5,8 @@ import SwiftUI
 struct PersonalRecordsView: View {
     let items: [RideItem]
     let loading: Bool
+    let bests: EffortScanner.Bests
+    let scanning: Bool
 
     private var insights: RideInsights { RideInsights(items: items) }
 
@@ -46,8 +48,29 @@ struct PersonalRecordsView: View {
 
     // MARK: - 个人纪录
 
+    /// 纪录卡：最长单次、最快均速、最快 5 公里、最快 1 公里、最长用时、单月最多
+    private var tiles: [RideInsights.Record] {
+        var out = insights.records()
+        let efforts = [
+            effortTile("最快 5 公里", bests.fiveKm),
+            effortTile("最快 1 公里", bests.oneKm),
+        ]
+        out.insert(contentsOf: efforts, at: min(2, out.count))
+        return out
+    }
+
+    /// 最佳成绩要翻每趟骑行的距离序列才算得出来，没算完、没有轨迹都如实写出来，不编数字
+    private func effortTile(_ label: String, _ effort: BestEffort?) -> RideInsights.Record {
+        if let effort {
+            return RideInsights.Record(label: label,
+                                       value: String(format: "%.1f km/h", effort.speedKmh),
+                                       detail: RideInsights.shortDay(effort.date))
+        }
+        return RideInsights.Record(label: label, value: "—", detail: scanning ? "正在计算" : "需要轨迹数据")
+    }
+
     private var recordCard: some View {
-        let records = insights.records()
+        let records = tiles
         return VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("个人纪录")

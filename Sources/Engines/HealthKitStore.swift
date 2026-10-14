@@ -93,6 +93,53 @@ final class HealthKitStore {
         }
     }
 
+    // MARK: - 最佳一段
+
+    /// 某次训练的距离累计序列（时间升序、累计米），用来算最快的一段
+    /// 优先用健康里记录的距离采样（手表/手机在训练期间写入，够密），采样太稀才回退到 GPS 轨迹
+    func distanceSeries(for workout: HKWorkout) async -> [(date: Date, meters: Double)] {
+        let samples = await distanceSamples(for: workout)
+        if samples.count >= 10 { return samples }
+        return Self.cumulative(from: await routeLocations(for: workout))
+    }
+
+    private func distanceSamples(for workout: HKWorkout) async -> [(date: Date, meters: Double)] {
+        guard isAvailable else { return [] }
+        let type = HKQuantityType(.distanceCycling)
+        let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate)
+        return await withCheckedContinuation { cont in
+            let q = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit,
+                                  sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, _ in
+                var total = 0.0
+                var out: [(Date, Double)] = []
+                for s in (samples as? [HKQuantitySample]) ?? [] {
+                    total += s.quantity.doubleValue(for: .meter())
+                    out.append((s.endDate, total))
+                }
+                cont.resume(returning: out)
+            }
+            store.execute(q)
+        }
+    }
+
+    /// 轨迹点累计距离。定位精度差的点直接丢掉，GPS 跳点会造出假的高速
+    static func cumulative(from route: [CLLocation]) -> [(date: Date, meters: Double)] {
+        let usable = route
+            .filter { $0.horizontalAccuracy > 0 && $0.horizontalAccuracy <= 50 }
+            .sorted { $0.timestamp < $1.timestamp }
+        guard usable.count > 1 else { return [] }
+
+        var total = 0.0
+        var out: [(date: Date, meters: Double)] = [(usable[0].timestamp, 0)]
+        for i in 1..<usable.count {
+            let step = usable[i].distance(from: usable[i - 1])
+            guard step.isFinite, step >= 0 else { continue }
+            total += step
+            out.append((usable[i].timestamp, total))
+        }
+        return out
+    }
+
     // MARK: - 历史读取
 
     /// 全部骑行训练（含手表与手机写入的），新的在前

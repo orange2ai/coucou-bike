@@ -1,5 +1,6 @@
 import XCTest
 import HealthKit
+import CoreLocation
 @testable import coucou
 
 /// 冒烟测试：工程完整性 + 展示层数据契约
@@ -118,6 +119,64 @@ final class SmokeTests: XCTestCase {
         let streak = RideInsights(items: items).streak
         XCTAssertEqual(streak.current, 3, "本周、上周、上上周连着，再往前断了")
         XCTAssertEqual(streak.longest, 3)
+    }
+
+    // MARK: - 最佳一段（最快 1 公里 / 5 公里）
+
+    /// 最快 1 公里取的是真的最快那一段：前 1 公里慢、后 1 公里快，结果必须是快的那段
+    func testBestEffortPicksFastestWindow() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        // 0 到 200 秒 5 m/s，200 秒之后 10 m/s
+        let series: [(date: Date, meters: Double)] = stride(from: 0, through: 400, by: 10).map { second in
+            let t = Double(second)
+            let meters = t <= 200 ? t * 5 : 1000 + (t - 200) * 10
+            return (date: start.addingTimeInterval(t), meters: meters)
+        }
+        let best = BestEfforts.best(in: series, windowKm: 1)
+        XCTAssertEqual(best?.speedKmh ?? 0, 36, accuracy: 0.1, "每 10 秒 100 米就是 36 km/h")
+        XCTAssertEqual(best?.date.timeIntervalSince1970 ?? 0,
+                       start.addingTimeInterval(200).timeIntervalSince1970,
+                       accuracy: 0.001, "纪录日期取最快那段窗口的起点")
+
+        // 同一条序列里 5 公里窗口根本不够长，不能有值
+        XCTAssertNil(BestEfforts.best(in: series, windowKm: 5), "总距离 3 公里不能凑出 5 公里纪录")
+    }
+
+    /// 距离不够整段窗口时返回 nil，绝不用不足的距离硬凑一个速度
+    func testBestEffortNeedsWholeWindow() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let series: [(date: Date, meters: Double)] = stride(from: 0, through: 100, by: 10).map { second in
+            (date: start.addingTimeInterval(Double(second)), meters: Double(second) * 8)
+        }
+        XCTAssertNil(BestEfforts.best(in: series, windowKm: 1), "只有 800 米")
+        XCTAssertNil(BestEfforts.best(in: series, windowKm: 5))
+    }
+
+    /// GPS 跳点必须丢掉：精度 120 米的点会把累计距离吹成一段假的高速
+    func testRouteSeriesSkipsBadFixes() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let route = (0...4).map { i -> CLLocation in
+            CLLocation(coordinate: CLLocationCoordinate2D(latitude: 31.2 + Double(i) * 0.001, longitude: 121.4),
+                       altitude: 0,
+                       horizontalAccuracy: i == 2 ? 120 : 8,
+                       verticalAccuracy: 5,
+                       timestamp: start.addingTimeInterval(Double(i) * 10))
+        }
+        let series = HealthKitStore.cumulative(from: route)
+        XCTAssertEqual(series.count, 4, "精度 120 米的那个点要被丢掉")
+        XCTAssertEqual(series.first?.meters ?? -1, 0, "序列从 0 米开始")
+        XCTAssertTrue(zip(series, series.dropFirst()).allSatisfy { $0.meters <= $1.meters }, "累计米必须单调不减")
+        XCTAssertTrue(HealthKitStore.cumulative(from: [route[0]]).isEmpty, "一个点算不出距离")
+    }
+
+    /// 演示数据的最佳成绩要有合理层级：1 公里比 5 公里快，两个都大于 0
+    func testDemoEffortsAreSane() {
+        let bests = EffortScanner.demoBests()
+        guard let one = bests.oneKm, let five = bests.fiveKm else {
+            return XCTFail("演示数据必须给出最佳成绩，官网截图要用")
+        }
+        XCTAssertGreaterThan(one.speedKmh, five.speedKmh, "短窗口一定比长窗口快")
+        XCTAssertGreaterThan(five.speedKmh, 0)
     }
 
     // MARK: - 页面结构
