@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>咕咕骑车 Coucou Bike — 骑行时，有一只鸟在你耳机里报数</title>
-<meta name="description" content="骑行语音播报 App。速度、距离、滚动均速，说给你听；总里程、柱状图、骑行日历，一眼看清。只读苹果健康，不写入，不收集，无广告。">
+<title>咕咕骑车 Coucou Bike — 看得见成长的骑行数据</title>
+<meta name="description" content="骑行数据展示 App。总里程、骑行日历、里程柱状图、最快一段、和过去的自己比，一眼看清你的成长。只读苹果健康，不写入，不收集，无广告。">
 <link rel="icon" href="icon.png">
 <style>
   :root {
@@ -77,13 +77,6 @@
   ul.feats li:last-child { border-bottom: none; }
   ul.feats b { color: var(--orange); font-weight: 700; margin-right: 8px; }
 
-  .cues { margin-top: 26px; display: grid; gap: 12px; }
-  .cue {
-    background: var(--card2); border: 1px solid #232323; border-radius: 14px;
-    padding: 14px 18px; font-size: 15px;
-  }
-  .cue .km { color: var(--orange); font-weight: 700; font-size: 12px; letter-spacing: 2px; display: block; margin-bottom: 4px; }
-
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
   @media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } }
   .stat-card {
@@ -116,8 +109,8 @@
       咕咕骑车 <span style="color:var(--muted);font-weight:400;font-size:14px">Coucou Bike</span>
     </div>
     <nav>
-      <a href="#cues">播报</a>
-      <a href="#stats">记录</a>
+      <a href="#data">骑行数据</a>
+      <a href="#records">个人纪录</a>
       <a href="#privacy">隐私</a>
       <a href="https://github.com/orange2ai/coucou-bike">GitHub</a>
     </nav>
@@ -125,64 +118,41 @@
 
   <div class="hero">
     <h1>咕咕骑车</h1>
-    <p class="sub">骑行播报，骑行记录</p>
-    <p class="badge"><span class="accent">Apple Watch 的最佳骑行搭档</span></p>
+    <p class="sub">看得见成长的骑行数据</p>
+    <p class="badge"><span class="accent">只读苹果健康 · 不写入 · 无广告</span></p>
     <div class="cta">
       <a class="btn primary" href="https://github.com/orange2ai/coucou-bike">GitHub 开源</a>
-      <a class="btn ghost" href="#stats">看看记录页</a>
+      <a class="btn ghost" href="#records">看看个人纪录</a>
     </div>
   </div>
 
   <div class="phones">
     <figure class="phone">
-      <img src="img/ride.png" alt="骑行中界面">
-      <figcaption>骑行中 · 纯黑 OLED</figcaption>
+      <img src="img/data.png" alt="骑行数据页">
+      <figcaption>骑行数据 · 总里程、日历、里程图</figcaption>
     </figure>
     <figure class="phone">
-      <img src="img/log.png" alt="记录页界面">
-      <figcaption>记录 · 里程与日历</figcaption>
-    </figure>
-    <figure class="phone">
-      <img src="img/summary.png" alt="结算页界面">
-      <figcaption>骑完啦 · 仪式感收尾</figcaption>
+      <img src="img/records.png" alt="个人纪录页">
+      <figcaption>个人纪录 · 最快一段与成长对比</figcaption>
     </figure>
   </div>
 </div>
 
-<section id="cues">
+<section id="data">
   <div class="wrap split">
     <div>
-      <div class="kicker">VOICE CUES</div>
-      <h2>替你开口的副驾</h2>
-      <p class="lead">每公里报一次数，配速掉线提醒你，骑完还有一句不正经的夸奖。混音播放，不暂停你的音乐和播客。</p>
-      <div class="cues">
-        <div class="cue"><span class="km">每公里</span>咕咕！已经骑行 2 公里，最近一公里平均速度 25 公里。这个配速，风都得让你三分。</div>
-        <div class="cue"><span class="km">室内 / 隧道</span>GPS 信号很弱，咕咕可能被墙挡住了。到空旷处或窗边试试</div>
-        <div class="cue"><span class="km">骑完啦</span>今天骑了 21 公里。咕咕为你骄傲，虽然骄傲不能抵扣千卡。</div>
-      </div>
-    </div>
-    <figure class="phone">
-      <img src="img/ride.png" alt="骑行播报界面">
-    </figure>
-  </div>
-</section>
-
-<section id="stats">
-  <div class="wrap split rev">
-    <div>
-      <div class="kicker">RIDE LOG</div>
-      <h2>你的骑行档案</h2>
-      <p class="lead">手表记的、手机记的，都汇成一个总里程。什么时候该保养、这个月骑了多少，打开就有。</p>
+      <div class="kicker">RIDE DATA</div>
+      <h2>忠实记录每一次骑行</h2>
+      <p class="lead">手表或 iPhone 记下的骑行训练，都汇到这里。原始数据一直在苹果健康里，咕咕只读不写，专心把数字摆清楚。</p>
       <ul class="feats">
-        <li><b>总里程</b>单车里程累计，按 1000 公里提醒你该保养了</li>
-        <li><b>柱状图</b>日、周、月三档，看趋势一眼就够</li>
+        <li><b>总里程</b>累计里程一眼看到，按 1000 公里提醒你该保养了</li>
         <li><b>骑行日历</b>GitHub 风格的橙点热力图，偷懒的日子藏不住</li>
-        <li><b>滚动均速</b>最近 1 公里、最近 5 公里，逐行实时更新</li>
-        <li><b>全量导出</b>每条骑行一键导出 Markdown，轨迹和分段都在</li>
+        <li><b>骑行里程</b>日、周、月三档柱状图，趋势一眼就够</li>
+        <li><b>骑行历史</b>每条都能点开看轨迹，右上角一键导出 Markdown</li>
       </ul>
     </div>
     <figure class="phone">
-      <img src="img/log.png" alt="记录页统计">
+      <img src="img/data.png" alt="骑行数据页截图">
     </figure>
   </div>
 
@@ -194,13 +164,33 @@
       </div>
       <div class="stat-card">
         <div class="n">0 台服务器</div>
-        <div class="t">无账号无上传，数据全在本机，随时导出随时带走</div>
+        <div class="t">无账号无上传，原始数据由苹果健康加密保管在你手机里</div>
       </div>
       <div class="stat-card">
         <div class="n">0 广告</div>
-        <div class="t">永久不出现广告，播报里也不塞广告，永远是你的耳机</div>
+        <div class="t">永久不出现广告，也不卖货。软件是干净的工具，不是别人的货架</div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="records">
+  <div class="wrap split rev">
+    <div>
+      <div class="kicker">RECORDS</div>
+      <h2>用数据激励自己</h2>
+      <p class="lead">把数字摆出来只是开始。最好的一次、最快的一段、比过去进步了多少，打开就能看到自己一直在往前走。</p>
+      <ul class="feats">
+        <li><b>个人纪录</b>最长单次、最快均速、最快 5 公里、最快 1 公里、单月最多</li>
+        <li><b>最快一段</b>逐趟扫描距离序列，算出真实的最快 1 公里和 5 公里</li>
+        <li><b>和过去的自己比</b>本周对上周、本月对上月、今年对去年同期，涨跌大字摆明</li>
+        <li><b>连续骑行周数</b>别断链子，断了从零数</li>
+        <li><b>不算不编</b>系统里没有的数据就不写不计算，绝不编一个数字给你看</li>
+      </ul>
+    </div>
+    <figure class="phone">
+      <img src="img/records.png" alt="个人纪录页截图">
+    </figure>
   </div>
 </section>
 
@@ -209,19 +199,19 @@
     <div class="kicker">PRINCIPLES</div>
     <h2>咕咕骑车的原则</h2>
     <div class="principles">
-      <div class="principle"><div class="no">01</div><h3>省电</h3><p>骑行是长时间运动。OLED 纯黑即熄灭，骑行页永远 100% 黑底，不需要变暗的花招。</p></div>
-      <div class="principle"><div class="no">02</div><h3>原生</h3><p>速度用 iPhone 定位与运动协处理器直接算，室内 GPS 被挡也能兜底。不导流，不另建孤岛。</p></div>
-      <div class="principle"><div class="no">03</div><h3>数据永不丢失</h3><p>数据都在本机与健康，无服务器，随时全量导出 Markdown。你的数据属于你，也随时可以离开。</p></div>
-      <div class="principle"><div class="no">04</div><h3>无广告，永久</h3><p>永久不出现广告，也不卖货。播报是你的耳机，不是别人的货架。</p></div>
+      <div class="principle"><div class="no">01</div><h3>只读健康</h3><p>记录交给手表和 iPhone，咕咕只负责读出来、摆清楚，绝不写入一个字节。</p></div>
+      <div class="principle"><div class="no">02</div><h3>专注展示</h3><p>不做码表，不做社交，把一件事做好：让你看清自己的骑行数据。</p></div>
+      <div class="principle"><div class="no">03</div><h3>数据永不丢失</h3><p>原始记录都在苹果健康里，咕咕自己不存原始数据，删掉缓存也只是重新算一遍。你的数据属于你。</p></div>
+      <div class="principle"><div class="no">04</div><h3>无广告，永久</h3><p>永久不出现广告，也不卖货。软件是你的工具，不是别人的货架。</p></div>
       <div class="principle"><div class="no">05</div><h3>开源，仅限自用</h3><p>代码公开，欢迎学习和自建。仅限非商业用途。</p></div>
-      <div class="principle"><div class="no">06</div><h3>不发明 UI</h3><p>能用苹果就苹果：锁屏卡片像锁屏卡片，日历像日历。不重新发明系统已经做好的东西。</p></div>
+      <div class="principle"><div class="no">06</div><h3>不发明 UI</h3><p>能用苹果就苹果：日历像日历，图表像图表。不重新发明系统已经做好的东西。</p></div>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <div>咕咕骑车 Coucou Bike · Apple Watch 的最佳骑行搭档</div>
+    <div>咕咕骑车 Coucou Bike · 看得见成长的骑行数据</div>
     <div>
       <a href="https://coucoubike.com">coucoubike.com</a> ·
       <a href="https://github.com/orange2ai/coucou-bike">GitHub</a> ·
